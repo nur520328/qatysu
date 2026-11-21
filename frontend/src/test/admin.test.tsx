@@ -143,6 +143,7 @@ describe('мұғалімдер', () => {
   it('жаңа бір реттік пароль бір рет көрсетіледі', async () => {
     renderAt('/admin/users', admin, {
       'GET /api/admin/users': ok({ users }),
+      'GET /api/admin/classes': ok({ year, classes: [] }),
       'POST /api/admin/users/9/reset-password': ok({ user: users[1], one_time_password: 'abcd-efgh-jkmn' }),
     })
     vi.spyOn(window, 'confirm').mockReturnValue(true)
@@ -161,7 +162,7 @@ describe('мұғалімдер', () => {
   })
 
   it('завуч өз аккаунтын өшіре алмайды; іздеу тізімді сүзеді', async () => {
-    renderAt('/admin/users', admin, { 'GET /api/admin/users': ok({ users }) })
+    renderAt('/admin/users', admin, { 'GET /api/admin/users': ok({ users }), 'GET /api/admin/classes': ok({ year, classes: [] }) })
     const user = userEvent.setup()
 
     await user.click(await screen.findByRole('button', { name: 'Сынақ Завуч: әрекеттер' }))
@@ -170,6 +171,32 @@ describe('мұғалімдер', () => {
     await user.type(screen.getByRole('searchbox'), 'жетекші')
     expect(screen.queryByText('Сынақ Завуч')).not.toBeInTheDocument()
     expect(screen.getByText('Сынақ Жетекші')).toBeInTheDocument()
+  })
+
+  it('жетекші мұғалімдер бетінен тағайындалады; бос емес сынып растаумен ауыстырылады', async () => {
+    const taken = cls(12, '5Ә', { homeroom: { id: 30, full_name: 'Сынақ Бұрынғы' } })
+    const calls = renderAt('/admin/users', admin, {
+      'GET /api/admin/users': ok({ users }),
+      'GET /api/admin/classes': ok({ year, classes: [cls(11, '5А', { homeroom: { id: 9, full_name: 'Сынақ Жетекші' } }), taken, cls(21, '6А', { is_active: false })] }),
+      'PATCH /api/admin/classes/12': ok({ class: taken }),
+      'PATCH /api/admin/classes/11': ok({ class: taken }),
+    })
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: 'Сынақ Жетекші: әрекеттер' }))
+    const group = screen.getByRole('group', { name: 'Сынып жетекшілігі' })
+    const select = within(group).getByLabelText('Сынып жетекшісі ету')
+    // Өз сыныбы мен жабық сынып таңдауда жоқ.
+    expect(within(select).getAllByRole('option').map((o) => o.textContent)).toEqual(['— сыныпты таңдаңыз —', '5Ә (қазір: Сынақ Бұрынғы)'])
+    await user.selectOptions(select, '12')
+    await user.click(within(group).getByRole('button', { name: 'Тағайындау' }))
+
+    expect(confirm).toHaveBeenCalledWith('5Ә сыныбының жетекшісі қазір Сынақ Бұрынғы. Ауыстырылсын ба?')
+    await waitFor(() => expect(calls.find((c) => c.key === 'PATCH /api/admin/classes/12')?.body).toEqual({ homeroom_user_id: 9 }))
+
+    await user.click(within(screen.getByRole('group', { name: 'Сынып жетекшілігі' })).getByRole('button', { name: '5А жетекшілігінен босату' }))
+    await waitFor(() => expect(calls.find((c) => c.key === 'PATCH /api/admin/classes/11')?.body).toEqual({ homeroom_user_id: null }))
   })
 
   it('Excel-ден жүктеу: алдын ала қарау, растау, парольдер парағы', async () => {

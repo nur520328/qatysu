@@ -207,7 +207,14 @@
     "passwordTitle": "一次性密码：{{name}}",
     "passwordNote": "密码现在只显示一次。请您亲自交给本人；首次登录时本人会修改密码。",
     "password": "密码",
-    "hide": "已记下，隐藏"
+    "hide": "已记下，隐藏",
+    "homeroomTitle": "班主任任命",
+    "homeroomAssign": "任命为班主任",
+    "homeroomPick": "— 请选择班级 —",
+    "homeroomTaken": "{{class}}（现任：{{name}}）",
+    "homeroomSet": "任命",
+    "homeroomRemove": "免去 {{class}} 班主任",
+    "homeroomReplace": "{{class}} 现任班主任是 {{name}}。要更换吗？"
   },
   "importT": {
     "title": "从 Excel 导入教师",

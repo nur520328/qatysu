@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { adminApi } from '../../api/admin'
-import type { Account } from '../../api/admin'
+import type { Account, SchoolClass } from '../../api/admin'
 import type { Role } from '../../api/client'
 import { useAuth } from '../../auth/context'
 import { useErrorText } from '../../lib/errors'
@@ -20,8 +20,13 @@ export function UsersPage() {
   const errorText = useErrorText()
   const { state } = useAuth()
   const selfId = state.status === 'signedIn' ? state.user.id : null
-  const fetcher = useCallback(() => adminApi.accounts(), [])
-  const { data: accounts, error: loadError, reload } = useLoad(fetcher)
+  const fetcher = useCallback(async () => {
+    const [accounts, all] = await Promise.all([adminApi.accounts(), adminApi.classes()])
+    return { accounts, classes: all.classes.filter((c) => c.is_active) }
+  }, [])
+  const { data, error: loadError, reload } = useLoad(fetcher)
+  const accounts = data?.accounts
+  const classes = data?.classes ?? []
   const [actionError, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [openId, setOpenId] = useState<number | null>(null)
@@ -114,6 +119,12 @@ export function UsersPage() {
                 <AccountActions
                   account={account}
                   isSelf={account.id === selfId}
+                  classes={classes}
+                  onHomeroom={async (cls, assign) => {
+                    const other = assign && cls.homeroom !== null && cls.homeroom.id !== account.id ? cls.homeroom.full_name : null
+                    if (other !== null && !window.confirm(t('users.homeroomReplace', { class: cls.name, name: other }))) return
+                    await run(() => adminApi.updateClass(cls.id, { homeroom_user_id: assign ? account.id : null }))
+                  }}
                   onRename={async (full_name) => (await run(() => adminApi.updateAccount(account.id, { full_name }))) !== null}
                   onToggle={async () => {
                     if (account.is_active && !window.confirm(t('users.deactivateConfirm', { name: account.full_name }))) return
@@ -138,15 +149,21 @@ export function UsersPage() {
 interface ActionsProps {
   account: Account
   isSelf: boolean
+  classes: SchoolClass[]
+  onHomeroom: (cls: SchoolClass, assign: boolean) => Promise<void>
   onRename: (fullName: string) => Promise<boolean>
   onToggle: () => Promise<void>
   onReset: () => Promise<void>
 }
 
-function AccountActions({ account, isSelf, onRename, onToggle, onReset }: ActionsProps) {
+function AccountActions({ account, isSelf, classes, onHomeroom, onRename, onToggle, onReset }: ActionsProps) {
   const { t } = useTranslation()
   const [name, setName] = useState(account.full_name)
   const [busy, setBusy] = useState(false)
+  const [classId, setClassId] = useState('')
+  const own = classes.filter((c) => c.homeroom?.id === account.id)
+  const rest = classes.filter((c) => c.homeroom?.id !== account.id)
+  const picked = rest.find((c) => String(c.id) === classId)
 
   async function guard(action: () => Promise<unknown>) {
     setBusy(true)
@@ -170,6 +187,35 @@ function AccountActions({ account, isSelf, onRename, onToggle, onReset }: Action
           {t('common.save')}
         </button>
       </form>
+      {account.is_active && (
+        <div className="form" role="group" aria-label={t('users.homeroomTitle')}>
+          {own.map((cls) => (
+            <div key={cls.id} className="row row--end">
+              <span className="roster__name">{t('users.homeroomOf', { classes: cls.name })}</span>
+              <button className="btn" type="button" disabled={busy} onClick={() => void guard(() => onHomeroom(cls, false))}>
+                {t('users.homeroomRemove', { class: cls.name })}
+              </button>
+            </div>
+          ))}
+          <div className="row row--end">
+            <label className="field field--grow">
+              <span className="field__label">{t('users.homeroomAssign')}</span>
+              <select className="field__input" value={classId} onChange={(e) => setClassId(e.target.value)}>
+                <option value="">{t('users.homeroomPick')}</option>
+                {rest.map((cls) => (
+                  <option key={cls.id} value={cls.id}>
+                    {cls.homeroom === null ? cls.name : t('users.homeroomTaken', { class: cls.name, name: cls.homeroom.full_name })}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button className="btn" type="button" disabled={busy || picked === undefined}
+              onClick={() => void guard(async () => { if (picked !== undefined) { await onHomeroom(picked, true); setClassId('') } })}>
+              {t('users.homeroomSet')}
+            </button>
+          </div>
+        </div>
+      )}
       <div className="row">
         {account.is_active && (
           <button className="btn" type="button" disabled={busy} onClick={() => void guard(onReset)}>{t('users.resetPassword')}</button>

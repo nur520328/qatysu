@@ -93,6 +93,12 @@ try {
 
   await page.getByRole('link', { name: 'Мұғалімдер', exact: true }).click()
   await page.getByText(/5А жетекшісі/).waitFor()
+  await page.getByRole('searchbox').fill('ойданов')
+  await page.getByRole('button', { name: /^Ойданов Берік.*әрекеттер$/ }).click()
+  await page.getByLabel('Сынып жетекшісі ету').selectOption({ label: '5Ә' })
+  await page.getByRole('button', { name: 'Тағайындау' }).click()
+  await page.getByText(/5Ә жетекшісі/).first().waitFor()
+  step('жетекші мұғалімдер бетінен тағайындалды')
   await page.getByRole('searchbox').fill('сынақ мұғалім')
   await page.getByRole('button', { name: 'Сынақ Мұғалім: әрекеттер' }).click()
   await page.getByRole('button', { name: 'Аккаунтты өшіру' }).click()
