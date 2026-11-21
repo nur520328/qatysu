@@ -12,6 +12,8 @@ use App\Http\Controllers\Admin\TeacherController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Duty\RoundController;
 use App\Http\Controllers\Duty\SessionController;
+use App\Http\Controllers\Homeroom\DayController;
+use App\Http\Controllers\Teacher\AttendanceController;
 use App\Http\Controllers\Teacher\HomeroomController;
 use Illuminate\Support\Facades\Route;
 
@@ -74,6 +76,23 @@ Route::middleware(['auth:sanctum', 'account'])->group(function () {
 
     Route::middleware('role:admin,teacher')->prefix('teacher')->group(function () {
         Route::get('homeroom', [HomeroomController::class, 'index']);
+
+        // Пән мұғалімі: бүгінгі күн, кез келген сынып.
+        Route::get('classes', [AttendanceController::class, 'classes']);
+        Route::get('classes/{class}', [AttendanceController::class, 'show']);
+        Route::get('students', [AttendanceController::class, 'search']);
+        Route::post('students/{student}/arrival', [AttendanceController::class, 'arrive']);
+        Route::delete('students/{student}/arrival', [AttendanceController::class, 'undoArrive']);
+        Route::post('students/{student}/leave', [AttendanceController::class, 'leave']);
+        Route::delete('students/{student}/leave', [AttendanceController::class, 'undoLeave']);
+    });
+
+    // Сынып жетекшісі (өз сыныбы) және завуч (кез келген сынып). Кімге не рұқсат екенін контроллер тексереді.
+    Route::middleware('role:admin,teacher')->prefix('homeroom')->group(function () {
+        Route::get('pending', [DayController::class, 'pending']);
+        Route::get('classes/{class}/days/{date}', [DayController::class, 'show']);
+        Route::patch('classes/{class}/days/{date}/students/{student}', [DayController::class, 'update']);
+        Route::get('classes/{class}/days/{date}/students/{student}/history', [DayController::class, 'history']);
     });
 });
 

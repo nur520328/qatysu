@@ -16,11 +16,13 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $round_status_source duty | staff
  * @property int|null $arrived_lesson
  * @property int|null $left_lesson
+ * @property int|null $arrived_by
+ * @property int|null $left_by
  * @property string|null $absence_reason
  * @property string|null $leave_permission
  * @property string|null $note
  */
-#[Fillable(['round_id', 'student_id', 'round_status', 'round_status_source', 'arrived_lesson', 'left_lesson', 'absence_reason', 'leave_permission', 'note', 'updated_by'])]
+#[Fillable(['round_id', 'student_id', 'round_status', 'round_status_source', 'arrived_lesson', 'arrived_by', 'left_lesson', 'left_by', 'absence_reason', 'leave_permission', 'note', 'updated_by'])]
 class AttendanceRecord extends Model
 {
     protected $attributes = ['round_status_source' => 'duty'];
@@ -37,6 +39,6 @@ class AttendanceRecord extends Model
      */
     public function isLockedForDuty(): bool
     {
-        return $this->round_status_source === 'staff' || $this->arrived_lesson !== null || $this->absence_reason !== null;
+        return $this->round_status_source === 'staff' || $this->arrived_lesson !== null || $this->left_lesson !== null || $this->absence_reason !== null;
     }
 }

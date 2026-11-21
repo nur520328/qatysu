@@ -73,7 +73,7 @@ class DutyCodeController extends Controller
             'ends_at' => $this->codes->shiftEnd($date, $shift)->toIso8601String(),
             'ended' => $this->codes->shiftEnd($date, $shift)->isPast(),
             'classes_total' => $classIds->count(),
-            'classes_done' => AttendanceRound::query()->whereIn('class_id', $classIds)->whereDate('date', $date->toDateString())->count(),
+            'classes_done' => AttendanceRound::query()->whereIn('class_id', $classIds)->whereDate('date', $date->toDateString())->where('duty_done', true)->count(),
             'code' => $code === null ? null : [
                 'id' => $code->id,
                 'code' => $code->visibleCode(),

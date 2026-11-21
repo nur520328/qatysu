@@ -40,7 +40,9 @@ class RoundService
 
         $counts = StudentEnrollment::query()->whereIn('class_id', $ids)->activeOn($code->date)
             ->selectRaw('class_id, count(*) as n')->groupBy('class_id')->pluck('n', 'class_id');
-        $rounds = AttendanceRound::query()->whereIn('class_id', $ids)->whereDate('date', $code->date->toDateString())->get()->keyBy('class_id');
+        // Мұғалім не жетекші ашқан, кезекші әлі араламаған жазба кезекшіге «аралынбаған» болып көрінеді.
+        $rounds = AttendanceRound::query()->whereIn('class_id', $ids)->whereDate('date', $code->date->toDateString())
+            ->where('duty_done', true)->get()->keyBy('class_id');
         $absent = AttendanceRecord::query()->whereIn('round_id', $rounds->modelKeys())->where('round_status', RoundStatus::Absent)
             ->selectRaw('round_id, count(*) as n')->groupBy('round_id')->pluck('n', 'round_id');
 
@@ -90,7 +92,7 @@ class RoundService
 
             return [
                 'class' => ['id' => $class->id, 'name' => $class->name()],
-                'round' => $round === null ? null : $this->roundSummary($round, $this->absentCount($rows)),
+                'round' => $round === null || ! $round->duty_done ? null : $this->roundSummary($round, $this->absentCount($rows)),
                 'students' => $rows,
             ];
         }, $sorted);
@@ -112,7 +114,7 @@ class RoundService
             $this->enrollments->roster($class, CarbonImmutable::parse($code->date)),
         );
 
-        return ['round' => $round === null ? null : $this->roundSummary($round, $this->absentCount($students)), 'students' => $students];
+        return ['round' => $round === null || ! $round->duty_done ? null : $this->roundSummary($round, $this->absentCount($students)), 'students' => $students];
     }
 
     /** @return array<string, mixed> */
@@ -194,6 +196,16 @@ class RoundService
             return ['stored_as' => 'round', 'kept_locked' => []];
         }
 
+        $adopting = ! $round->duty_done;
+        if ($adopting) {
+            // Күннің жазбасын мұғалім не жетекші ашқан, кезекші енді аралап жатыр: сол жазба жалғасады.
+            // Мұғалім тіркеген оқушылар құлыптаулы, қалғандарына кезекшінің белгісі жазылады.
+            $round->update([
+                'client_uuid' => $clientUuid, 'client_time' => $clientTime, 'duty_code_id' => $code->id,
+                'duty_session_id' => $session->id, 'duty_done' => true, 'received_late' => $code->expires_at->isPast(),
+            ]);
+        }
+
         if ($round->client_uuid !== $clientUuid) {
             // Басқа планшеттің жеке аралауы: үстінен жазылмайды, завуч шешкенше бөлек сақталады.
             AttendanceRoundConflict::query()->firstOrCreate(['client_uuid' => $clientUuid], [
@@ -223,10 +235,10 @@ class RoundService
             }
         }
 
-        if ($changes === [] && $added === []) {
+        if ($changes === [] && $added === [] && ! $adopting) {
             return ['stored_as' => 'round', 'kept_locked' => $keptLocked]; // қайта жіберілген сол дерек
         }
-        if ($revision !== null && $revision !== $round->revision) {
+        if (! $adopting && $revision !== null && $revision !== $round->revision) {
             throw new DomainException('round_changed');
         }
 

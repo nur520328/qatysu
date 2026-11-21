@@ -253,3 +253,38 @@ Frontend пен backend арасындағы келісім. Екі жақ та 
 - `round` енді `received_late` өрісін де қайтарады.
 - `conflict`: `{"id", "class": {"id", "name"}, "date", "student_count", "current": {"device_number", "saved_at", "absent": [{"id", "name"}]}, "incoming": {"device_number", "marked_at", "received_at", "absent": [{"id", "name"}]}}`.
 - `keep`: сервердегі нұсқа қалады, белгілер өзгермейді. `replace`: кейін жеткен нұсқа қолданылады; әр өзгеріс аудитке завуч атымен жазылады, өзгерген жазбаларды кезекші енді өзгерте алмайды.
+
+## Пән мұғалімі (`/api/teacher/…`, рөлі `admin` не `teacher`)
+
+Тек бүгінгі күн. Себеп, рұқсат, түсініктеме бұл жауаптарда ешқашан болмайды.
+
+| Әдіс | Жол | Сұраныс | Жауап | Қателер |
+|---|---|---|---|---|
+| GET | `/classes` | — | `{"date", "is_school_day", "max_lessons", "classes": [{"id", "name", "grade", "shift"}]}` | |
+| GET | `/classes/{id}` | — | `{"class": {"id", "name"}, "students": [row]}` | `404 class_not_found` |
+| GET | `/students?q=` | тегінің басы, кемінде 3 әріп | `{"students": [row]}` (30-ға дейін) | `422 validation_failed` |
+| POST | `/students/{id}/arrival` | `{"lesson": 1…max}` | `{"student": row}` | `409 already_registered`, `409 reason_already_set`, `422 lesson_out_of_range`, `422 leave_before_arrival`, `422 not_school_day`, `404 student_not_in_class` |
+| DELETE | `/students/{id}/arrival` | — | `{"student": row}` | `404 not_registered`, `409 cannot_undo` |
+| POST | `/students/{id}/leave` | `{"lesson": 2…max}` | `{"student": row}` | жоғарыдағыдай |
+| DELETE | `/students/{id}/leave` | — | `{"student": row}` | жоғарыдағыдай |
+
+- `row`: `{"id", "last_name", "first_name", "patronymic", "class": {"id", "name"}, "round_status": "present"|"absent"|null, "arrived_lesson", "left_lesson", "can_undo_arrival", "can_undo_leave"}`. `round_status: null` — бүгін бұл оқушыға әлі белгі жоқ.
+- Басқа біреу тіркегенін мұғалім өзгерте де, өшіре де алмайды. Жетекші рұқсат белгісін қойған соң кетуді тіркеген мұғалімнің өзі де өшіре алмайды.
+- Кезекші сыныпты әлі араламаған болса да тіркеуге болады: күннің жазбасы ашылады (`duty_done = false`), кезекші кейін соны жалғастырады.
+
+## Сынып жетекшісі және завуч (`/api/homeroom/…`)
+
+Жетекші: тек өз сыныбы; өзгерту соңғы `homeroom_edit_days` күн ішінде. Завуч: кез келген сынып, кез келген өткен күн.
+
+| Әдіс | Жол | Сұраныс | Жауап | Қателер |
+|---|---|---|---|---|
+| GET | `/pending` | — | `{"items": [{"class": {"id", "name"}, "date", "student": {"id", "name"}, "kind": "reason"|"permission"}]}` | |
+| GET | `/classes/{id}/days/{күн}` | — | `{"class", "date", "is_school_day", "editable", "max_lessons", "duty": null|{"saved_at", "received_late"}, "students": [full]}` | `403 forbidden`, `422 invalid_date` |
+| PATCH | `/classes/{id}/days/{күн}/students/{id}` | өзгеретін өрістер ғана | `{"student": full}` | `403 forbidden`, `422 date_not_editable`, `422 not_school_day`, `422 student_not_in_class`, `422 reason_needs_full_absence`, `422 permission_needs_leave`, `422 leave_before_arrival`, `422 lesson_out_of_range` |
+| GET | `/classes/{id}/days/{күн}/students/{id}/history` | — | `{"created": null|{"at", "by_duty"}, "changes": [{"field", "old", "new", "role", "by", "device_number", "at"}]}` | |
+
+- `full`: `row` өрістері (сыныпсыз) + `absence_reason` (`sick`/`excused`/`unexcused`/null), `leave_permission` (`permitted`/`unpermitted`/null), `note`, `pending` (`reason`/`permission`/null).
+- PATCH өрістері: `round_status`, `arrived_lesson`, `left_lesson`, `absence_reason`, `leave_permission`, `note`.
+- Себеп тек күні бойы болмаған оқушыға (жоқ, келмеген, кетпеген); рұқсат тек кетіп қалған оқушыға. Оқушы «келді» не «кетті» болып өзгерсе, себеп өзі алынады; кету алынса, рұқсат өзі алынады (екеуі де тарихқа жазылады).
+- Жетекші не завуч өзгерткен «бар/жоқ» белгісін кезекші енді өзгерте алмайды.
+- `duty: null` — сол күні кезекші сыныпты араламаған.

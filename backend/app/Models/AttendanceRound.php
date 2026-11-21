@@ -21,17 +21,18 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $client_time
  * @property int $revision
  * @property bool $received_late
+ * @property bool $duty_done кезекші сыныпты аралады ма (false: жазбаны мұғалім не жетекші ашқан)
  * @property Carbon $updated_at
  */
-#[Fillable(['class_id', 'date', 'shift', 'duty_code_id', 'duty_session_id', 'client_uuid', 'client_time', 'revision', 'received_late'])]
+#[Fillable(['class_id', 'date', 'shift', 'duty_code_id', 'duty_session_id', 'client_uuid', 'client_time', 'revision', 'received_late', 'duty_done'])]
 class AttendanceRound extends Model
 {
-    protected $attributes = ['revision' => 1, 'received_late' => false];
+    protected $attributes = ['revision' => 1, 'received_late' => false, 'duty_done' => true];
 
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['date' => 'date', 'shift' => Shift::class, 'client_time' => 'datetime', 'revision' => 'integer', 'received_late' => 'boolean'];
+        return ['date' => 'date', 'shift' => Shift::class, 'client_time' => 'datetime', 'revision' => 'integer', 'received_late' => 'boolean', 'duty_done' => 'boolean'];
     }
 
     /** @return HasMany<AttendanceRecord, $this> */
