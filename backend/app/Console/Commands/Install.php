@@ -23,7 +23,7 @@ use Throwable;
  * (2026-11-21 күні Hoster.kz-те анықталды). Сондықтан ең маңызды жолдар — нәтиже мен
  * бір реттік пароль — ең басында тұрады, ал егжей-тегжей соңында.
  */
-#[Signature('qatysu:install {login? : Алғашқы әкімшінің логині} {full_name? : Оның аты-жөні (көрсетілмесе «Әкімші»)}')]
+#[Signature('qatysu:install {login? : Алғашқы әкімшінің логині} {full_name? : Оның аты-жөні (көрсетілмесе «Әкімші»)} {--accept-empty-database : Бұрын орнатылған жерде дерекқордың бос болуы күтілген (мысалы, әдейі тазаланған)}')]
 #[Description('Ортаны тексеріп, кестелерді жаңартады; қажет болса алғашқы әкімшіні ашады')]
 class Install extends Command
 {
@@ -53,6 +53,16 @@ class Install extends Command
             $this->details[] = 'Шифрлау кілті жасалды.';
         }
 
+        // 2026-11-21 күні хостингте жаңарту кезінде дерекқор күтпеген жерден бос болып шықты,
+        // ал команда үнсіз жаңа бос жүйе құрды. Енді мұндайда тоқтап, адамнан растау сұрайды.
+        if ($this->databaseUnexpectedlyEmpty() && ! $this->option('accept-empty-database')) {
+            return $this->finish(false, [
+                'ТОҚТАТЫЛДЫ: бұл жерде жүйе бұрын орнатылған ('.$this->marker()['installed_at'].'), бірақ дерекқор бос.',
+                'Дерек жоғалған болуы мүмкін. Ештеңе өзгертілген жоқ. Сақтық көшірмеден қалпына келтіріңіз не Claude-қа хабарлаңыз.',
+                'Бос дерекқор әдейі болса: командаға --accept-empty-database қосыңыз.',
+            ]);
+        }
+
         $this->alignDatabaseCharset();
 
         $before = $this->migrationCount();
@@ -71,6 +81,9 @@ class Install extends Command
         Artisan::call('optimize:clear');
 
         [$ok, $adminLines] = $this->ensureAdmin();
+        if ($ok) {
+            $this->writeMarker();
+        }
         $this->details[] = $this->telegramStatus();
 
         return $this->finish($ok, $adminLines);
@@ -155,6 +168,40 @@ class Install extends Command
         } catch (Throwable) {
             $this->details[] = "Дерекқордың әдепкі кодталуы {$current} (өзгертуге құқық жоқ; кестелер utf8mb4).";
         }
+    }
+
+    /** Орнату белгісі дерекқордан тыс сақталады: дерекқор жоғалса да, бұрын орнатылғаны белгілі болады. */
+    public static function markerPath(): string
+    {
+        return storage_path('app/install-marker.json');
+    }
+
+    /** @return array{installed_at: string, version: string}|null */
+    private function marker(): ?array
+    {
+        if (! is_file(self::markerPath())) {
+            return null;
+        }
+        $data = json_decode((string) file_get_contents(self::markerPath()), true);
+
+        return is_array($data) && isset($data['installed_at'], $data['version']) ? $data : null;
+    }
+
+    private function writeMarker(): void
+    {
+        $data = ['installed_at' => $this->marker()['installed_at'] ?? now()->toDateString(), 'version' => (string) config('app.version')];
+        if (@file_put_contents(self::markerPath(), json_encode($data)) === false) {
+            $this->details[] = 'Ескерту: орнату белгісі жазылмады (storage/app).';
+        }
+    }
+
+    private function databaseUnexpectedlyEmpty(): bool
+    {
+        if ($this->marker() === null) {
+            return false;
+        }
+
+        return ! Schema::hasTable('users') || ! User::query()->exists();
     }
 
     private function migrationCount(): int

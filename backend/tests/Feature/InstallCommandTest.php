@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Console\Commands\Install;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -17,6 +18,44 @@ class InstallCommandTest extends TestCase
     {
         parent::setUp();
         Http::fake(['api.telegram.org*' => Http::response('', 302)]);
+        @unlink(Install::markerPath());
+    }
+
+    protected function tearDown(): void
+    {
+        @unlink(Install::markerPath());
+        parent::tearDown();
+    }
+
+    public function test_previously_installed_site_with_empty_database_stops_instead_of_starting_over(): void
+    {
+        [$exit] = $this->install(['login' => 'zavuch']);
+        $this->assertSame(0, $exit);
+        $this->assertFileExists(Install::markerPath());
+
+        // Дерекқор жоғалды (хостингте болған жағдай): аккаунттар жоқ.
+        User::query()->delete();
+
+        [$exit, $output] = $this->install(['login' => 'zavuch']);
+        $this->assertSame(1, $exit, $output);
+        $this->assertStringContainsString('ТОҚТАТЫЛДЫ', $output);
+        $this->assertStringContainsString('Ештеңе өзгертілген жоқ', $output);
+        $this->assertSame(0, User::query()->count());
+        $this->assertLessThan(450, mb_strlen($output), $output);
+
+        // Бос дерекқор әдейі болса, адам оны анық растайды.
+        [$exit, $output] = $this->install(['login' => 'zavuch', '--accept-empty-database' => true]);
+        $this->assertSame(0, $exit, $output);
+        $this->assertSame(1, User::query()->count());
+    }
+
+    public function test_ordinary_update_is_not_blocked_by_the_marker(): void
+    {
+        $this->install(['login' => 'zavuch']);
+
+        [$exit, $output] = $this->install();
+        $this->assertSame(0, $exit, $output);
+        $this->assertStringContainsString('Әкімші аккаунты бар', $output);
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace Tests;
 
+use App\Console\Commands\Install;
 use App\Models\User;
 use Database\Factories\UserFactory;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
@@ -16,6 +17,9 @@ abstract class TestCase extends BaseTestCase
         // Интерфейс пен API бір доменде тұрады. Sanctum сұранысты «өз интерфейсімізден»
         // деп тану үшін Origin тақырыбына қарайды, сондықтан тесттер де оны жібереді.
         $this->withHeader('Origin', config('app.url'));
+
+        // Орнату белгісі файлда сақталады; бір тесттен екіншісіне өтпеуі тиіс.
+        @unlink(Install::markerPath());
     }
 
     /**
