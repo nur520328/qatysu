@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from './auth/context'
 import { ChangePasswordPage } from './pages/ChangePasswordPage'
@@ -6,6 +6,9 @@ import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { DutyApp } from './pages/duty/DutyApp'
 import { DutyPage } from './pages/admin/DutyPage'
+import { DayPage } from './pages/staff/DayPage'
+import { RegisterPage } from './pages/staff/RegisterPage'
+import { Shell } from './components/Shell'
 import { AdminLayout } from './pages/admin/AdminLayout'
 import { CalendarPage } from './pages/admin/CalendarPage'
 import { ClassPage } from './pages/admin/ClassPage'
@@ -14,6 +17,24 @@ import { ImportStudentsPage } from './pages/admin/ImportStudentsPage'
 import { ImportTeachersPage } from './pages/admin/ImportTeachersPage'
 import { SettingsPage } from './pages/admin/SettingsPage'
 import { UsersPage } from './pages/admin/UsersPage'
+
+/** Жетекшінің күн беті: мұғалімнің жиегінде. */
+function TeacherDay() {
+  const { t } = useTranslation()
+  const { logout } = useAuth()
+  return (
+    <Shell wide actions={<button className="btn" type="button" onClick={() => void logout()}>{t('home.logout')}</button>}>
+      <DayPage base="/homeroom" backTo="/" backLabel={t('common.back')} />
+    </Shell>
+  )
+}
+
+/** Завучтың күн беті: әкімші мәзірінің ішінде, кез келген сыныпқа. */
+function AdminDay() {
+  const { t } = useTranslation()
+  const { classId } = useParams()
+  return <DayPage base="/admin/attendance" backTo={`/admin/classes/${classId}`} backLabel={t('nav.classes')} />
+}
 
 export function App() {
   const { t } = useTranslation()
@@ -43,6 +64,8 @@ export function App() {
     return (
       <Routes>
         <Route path="/" element={<HomePage user={state.user} />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/homeroom/:classId/:date" element={<TeacherDay />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     )
@@ -56,6 +79,7 @@ export function App() {
         <Route path="import/students" element={<ImportStudentsPage />} />
         <Route path="import/teachers" element={<ImportTeachersPage />} />
         <Route path="duty" element={<DutyPage />} />
+        <Route path="attendance/:classId/:date" element={<AdminDay />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="settings" element={<SettingsPage />} />

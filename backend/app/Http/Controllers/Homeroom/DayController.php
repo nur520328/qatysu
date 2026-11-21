@@ -17,6 +17,7 @@ use App\Services\Attendance\RecordService;
 use App\Services\CalendarService;
 use App\Services\EnrollmentService;
 use App\Support\KazakhSort;
+use App\Support\StudentNames;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -146,15 +147,16 @@ class DayController extends Controller
                 ->orWhere(fn ($l) => $l->whereNotNull('left_lesson')->whereNull('leave_permission')))
             ->get();
         $students = Student::query()->whereIn('id', $records->pluck('student_id'))->get()->keyBy('id');
+        $names = StudentNames::labels($students, $records->mapWithKeys(static fn (AttendanceRecord $r): array => [$r->student_id => $rounds[$r->round_id]->class_id])->all(), $today);
 
-        $items = $records->map(function (AttendanceRecord $record) use ($rounds, $classes, $students): array {
+        $items = $records->map(function (AttendanceRecord $record) use ($rounds, $classes, $students, $names): array {
             $round = $rounds[$record->round_id];
             $student = $students[$record->student_id];
 
             return [
                 'class' => ['id' => $round->class_id, 'name' => $classes[$round->class_id]->name()],
                 'date' => $round->date->toDateString(),
-                'student' => ['id' => $student->id, 'name' => trim($student->last_name.' '.$student->first_name)],
+                'student' => ['id' => $student->id, 'name' => $names[$student->id]],
                 'kind' => $record->left_lesson !== null ? 'permission' : 'reason',
             ];
         })->all();

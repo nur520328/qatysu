@@ -25,6 +25,7 @@ export function ClassPage() {
     return {
       cls: all.classes.find((c) => c.id === classId) ?? roster.class,
       students: roster.students,
+      today: roster.date,
       others: all.classes.filter((c) => c.id !== classId && c.is_active),
       accounts: users.filter((u) => u.is_active),
     }
@@ -62,6 +63,8 @@ export function ClassPage() {
             {!cls.is_active && ` · ${t('classes.closed')}`}
           </p>
         </div>
+        {/* Завуч кез келген сыныптың қатысуын көріп, түзей алады (жетекші орнында болмаса да). */}
+        <Link className="btn btn--strong" to={`/admin/attendance/${cls.id}/${data.today}`}>{t('day.attendance')}</Link>
       </header>
 
       {error !== null && <p className="alert" role="alert">{error}</p>}

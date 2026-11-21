@@ -12,6 +12,8 @@ use App\Models\SchoolClass;
 use App\Models\Student;
 use App\Models\User;
 use App\Support\KazakhSort;
+use App\Support\StudentNames;
+use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
@@ -43,11 +45,20 @@ class ConflictService
         $studentIds = $records->flatten()->pluck('student_id')->merge($conflicts->pluck('absent_student_ids')->flatten())->unique();
         $students = Student::query()->whereIn('id', $studentIds)->get()->keyBy('id');
 
-        $names = static function (iterable $ids) use ($students): array {
+        $classByStudent = [];
+        foreach ($records as $roundId => $roundRecords) {
+            $classId = $rounds->firstWhere('id', $roundId)->class_id;
+            foreach ($roundRecords as $record) {
+                $classByStudent[$record->student_id] = $classId;
+            }
+        }
+        $labels = StudentNames::labels($students, $classByStudent, CarbonImmutable::today());
+
+        $names = static function (iterable $ids) use ($students, $labels): array {
             $list = array_values(array_filter(array_map(static fn ($id) => $students->get((int) $id), [...$ids])));
             $sorted = KazakhSort::sort($list, static fn (Student $s): array => [$s->last_name, $s->first_name, (string) $s->patronymic]);
 
-            return array_map(static fn (Student $s): array => ['id' => $s->id, 'name' => trim($s->last_name.' '.$s->first_name)], $sorted);
+            return array_map(static fn (Student $s): array => ['id' => $s->id, 'name' => $labels[$s->id]], $sorted);
         };
 
         return $conflicts->map(function (AttendanceRoundConflict $conflict) use ($classes, $rounds, $records, $devices, $names): array {

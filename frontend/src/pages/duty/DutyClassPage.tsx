@@ -5,6 +5,7 @@ import type { Roster } from '../../api/duty'
 import { Shell } from '../../components/Shell'
 import type { OutboxEntry } from '../../duty/db'
 import type { ClassView, DutyStore } from '../../duty/store'
+import { displayNames } from '../../lib/attendance'
 import { useErrorText } from '../../lib/errors'
 
 interface Props {
@@ -72,6 +73,7 @@ export function DutyClassPage({ store, target, readOnly, onDone }: Props) {
   const roster = loaded !== null && loaded !== 'missing' ? loaded.roster : null
   const state = loaded !== null && loaded !== 'missing' ? loaded.state : null
   const total = roster?.students.length ?? 0
+  const names = displayNames(roster?.students ?? [])
 
   return (
     <Shell wide actions={<button className="btn" type="button" onClick={back}>{t('duty.back')}</button>}>
@@ -104,7 +106,7 @@ export function DutyClassPage({ store, target, readOnly, onDone }: Props) {
                       onClick={() => toggle(student.id)}
                     >
                       <span className="mark__no">{index + 1}</span>
-                      <span className="mark__name">{[student.last_name, student.first_name].join(' ')}</span>
+                      <span className="mark__name">{names.get(student.id)}</span>
                       <span className="mark__state">
                         {student.locked ? t('duty.locked') : isAbsent ? t('duty.absentMark') : t('duty.present')}
                       </span>

@@ -30,6 +30,7 @@ const home = {
       }],
     },
   }),
+  'GET /api/homeroom/pending': () => ({ status: 200, body: { items: [] } }),
 }
 
 function renderApp() {
@@ -69,11 +70,8 @@ describe('кіру', () => {
     await user.click(screen.getByRole('button', { name: 'Кіру' }))
 
     expect(await screen.findByRole('heading', { name: 'Сәлеметсіз бе, Сынақ Мұғалім!' })).toBeInTheDocument()
-    const roster = await screen.findByRole('region', { name: '7Ә сыныбы' })
-    expect(roster).toHaveTextContent('Сынақов Бірінші')
-    expect(roster).toHaveTextContent('1 оқушы')
-    // Мұғалімге тізімді өзгертетін батырма берілмейді.
-    expect(roster.querySelector('button')).toBeNull()
+    expect(await screen.findByRole('link', { name: 'Кешігу мен кетіп қалуды тіркеу' })).toHaveAttribute('href', '/register')
+    expect(await screen.findByRole('link', { name: /7Ә сыныбы · 1 оқушы · Бүгінгі қатысу/ })).toHaveAttribute('href', '/homeroom/5/2026-11-20')
     expect(calls.find((c) => c.key === 'POST /api/auth/login')?.body).toEqual({
       login: 'mugalim7',
       password: 'qupiya123',

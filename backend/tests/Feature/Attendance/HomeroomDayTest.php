@@ -183,6 +183,18 @@ class HomeroomDayTest extends DutyTestCase
         $this->assertNull($this->record('Сынақов')->absence_reason);
     }
 
+    public function test_namesakes_in_one_class_are_told_apart_by_patronymic(): void
+    {
+        // Сол сыныпта тегі мен аты бірдей екінші оқушы.
+        $twin = $this->enrol($this->class, 'Сынақов', 'Екінші', 'Үлгіұлы');
+        Student::query()->whereKey($this->ids['Сынақов'])->update(['patronymic' => 'Мысалұлы']);
+        $this->actingAs($this->homeroom);
+        $this->patchJson("/api/homeroom/classes/{$this->class->id}/days/2026-11-20/students/{$twin->id}", ['round_status' => 'absent'])->assertOk();
+
+        $names = array_column(array_column($this->getJson('/api/homeroom/pending')->json('items'), 'student'), 'name');
+        $this->assertSame(['Сынақов Екінші Мысалұлы', 'Сынақов Екінші Үлгіұлы', 'Үлгіев Үшінші'], $names);
+    }
+
     public function test_pending_list_shows_what_the_homeroom_still_has_to_decide(): void
     {
         $this->classWith('5Ә', ['Бөтенов Төртінші'])->update(['homeroom_user_id' => User::factory()->create()->id]);

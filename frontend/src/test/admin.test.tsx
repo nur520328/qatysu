@@ -327,7 +327,7 @@ describe('сақтық көшірме', () => {
 
 describe('рөлдер', () => {
   it('мұғалімге әкімші беттері ашылмайды, сұраныс та жіберілмейді', async () => {
-    const calls = renderAt('/admin/users', teacher, { 'GET /api/teacher/homeroom': ok({ date: '2026-11-20', classes: [] }) })
+    const calls = renderAt('/admin/users', teacher, { 'GET /api/teacher/homeroom': ok({ date: '2026-11-20', classes: [] }), 'GET /api/homeroom/pending': ok({ items: [] }) })
     expect(await screen.findByRole('heading', { name: 'Сәлеметсіз бе, Сынақ Мұғалім!' })).toBeInTheDocument()
     expect(calls.some((c) => c.key.includes('/api/admin/'))).toBe(false)
   })

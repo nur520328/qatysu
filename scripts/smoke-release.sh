@@ -127,6 +127,13 @@ if [ "$(TZ=Asia/Almaty date +%H)" -lt 22 ]; then
   grep -q '"absent_count":1' "$WORK/tab.json" || fail "аралау нәтижесі қате"
   [ "$(tab "$BASE/api/admin/classes")" = 401 ] || fail "кезекшіге әкімші API ашық"
   [ "$(mariadb -uroot -N qatysu_smoke -e "select count(*) from attendance_records")" = 2 ] || fail "қатысу жазбаларының саны қате"
+  # Мұғалім мен жетекші (6-кезең): кешігуді тіркеу, себеп қою, тарих.
+  OTHER_ID="$(mariadb -uroot -N qatysu_smoke -e "select student_id from attendance_records where student_id <> $STUDENT_ID limit 1")"
+  [ "$(json POST "/api/teacher/students/$OTHER_ID/leave" '{"lesson":4}')" = 200 ] || fail "кетіп қалу тіркелмеді"
+  [ "$(json PATCH "/api/homeroom/classes/$CLASS_ID/days/$TODAY/students/$STUDENT_ID" '{"absence_reason":"sick"}')" = 200 ] || fail "себеп қойылмады"
+  [ "$(json PATCH "/api/homeroom/classes/$CLASS_ID/days/$TODAY/students/$OTHER_ID" '{"absence_reason":"sick"}')" = 422 ] || fail "сәйкессіз себеп қабылданды"
+  curl -s -b "$JAR" -H 'Accept: application/json' -H "Origin: $BASE" "$BASE/api/homeroom/pending" | grep -q '"kind":"permission"' || fail "анықталмағандар тізімі қате"
+  curl -s -b "$JAR" -H 'Accept: application/json' -H "Origin: $BASE" "$BASE/api/homeroom/classes/$CLASS_ID/days/$TODAY/students/$STUDENT_ID/history" | grep -q '"field":"absence_reason"' || fail "тарих жазылмады"
 else
   echo "   (22:00-ден кейін: кезекші тексерісі өткізілмеді, смена уақыты жетпейді)"
 fi
