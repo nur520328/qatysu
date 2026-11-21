@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AcademicYearController;
 use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\DutyCodeController;
 use App\Http\Controllers\Admin\ImportController;
+use App\Http\Controllers\Admin\RoundConflictController;
 use App\Http\Controllers\Admin\SchoolClassController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\StudentController;
@@ -60,6 +61,9 @@ Route::middleware(['auth:sanctum', 'account'])->group(function () {
         Route::post('duty-codes', [DutyCodeController::class, 'store']);
         Route::delete('duty-codes/{code}', [DutyCodeController::class, 'destroy']);
 
+        Route::get('round-conflicts', [RoundConflictController::class, 'index']);
+        Route::post('round-conflicts/{conflict}/resolve', [RoundConflictController::class, 'resolve']);
+
         Route::get('backups', [BackupController::class, 'index']);
         Route::post('backups', [BackupController::class, 'store']);
         Route::get('backups/{name}/download', [BackupController::class, 'download']);
@@ -80,7 +84,9 @@ Route::prefix('duty')->group(function () {
 
     Route::middleware('duty')->group(function () {
         Route::get('session', [SessionController::class, 'show']);
+        Route::get('rosters', [RoundController::class, 'index']);
         Route::get('classes/{class}', [RoundController::class, 'show']);
-        Route::put('classes/{class}/round', [RoundController::class, 'save']);
     });
+    // Смена кезінде интернетсіз белгіленген дерек сол күннің соңына дейін қабылданады.
+    Route::middleware('duty:sync')->put('classes/{class}/round', [RoundController::class, 'save']);
 });

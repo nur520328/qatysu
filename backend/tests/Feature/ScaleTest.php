@@ -77,7 +77,12 @@ class ScaleTest extends TestCase
         $state = $this->measure(fn () => $this->getJson('/api/duty/session')->assertOk());
         $state['response']->assertJsonPath('classes.'.array_search($class->id, array_column($state['response']->json('classes'), 'id'), true).'.round.absent_count', 1);
 
-        foreach (['roster' => [$roster, 12], 'save' => [$save, 20], 'edit' => [$edit, 25], 'state' => [$state, 12]] as $name => [$result, $limit]) {
+        $all = $this->measure(fn () => $this->getJson('/api/duty/rosters')->assertOk());
+        $this->assertCount(25, $all['response']->json('rosters'));
+        $this->assertSame(625, array_sum(array_map('count', array_column($all['response']->json('rosters'), 'students'))));
+        $this->assertLessThan(120_000, strlen($all['response']->getContent()), 'тізімдер жауабы тым үлкен: '.strlen($all['response']->getContent()));
+
+        foreach (['roster' => [$roster, 12], 'save' => [$save, 20], 'edit' => [$edit, 25], 'state' => [$state, 12], 'rosters' => [$all, 12]] as $name => [$result, $limit]) {
             $this->assertLessThanOrEqual($limit, $result['queries'], "$name: сұраныс тым көп ({$result['queries']})");
             $this->assertLessThan(500, $result['ms'], "$name: тым баяу ({$result['ms']} мс)");
         }

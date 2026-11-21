@@ -60,6 +60,43 @@ class RoundService
     }
 
     /**
+     * Сменаның барлық сыныбының тізімі мен белгілері (планшеттің интернетсіз қоймасы үшін).
+     * Сұраныс саны сынып санына тәуелсіз.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function rosters(DutyCode $code): array
+    {
+        $classes = SchoolClass::query()
+            ->where('shift', $code->shift)->where('is_active', true)
+            ->whereHas('academicYear', fn ($q) => $q->where('is_current', true))
+            ->get();
+        $ids = $classes->modelKeys();
+
+        $enrollments = StudentEnrollment::query()->whereIn('class_id', $ids)->activeOn($code->date)->with('student')->get()->groupBy('class_id');
+        $rounds = AttendanceRound::query()->whereIn('class_id', $ids)->whereDate('date', $code->date->toDateString())->get()->keyBy('class_id');
+        $records = AttendanceRecord::query()->whereIn('round_id', $rounds->modelKeys())->get()->groupBy('round_id');
+
+        $sorted = KazakhSort::sort($classes, static fn (SchoolClass $c): array => [sprintf('%02d', $c->grade), $c->letter]);
+
+        return array_map(function (SchoolClass $class) use ($enrollments, $rounds, $records): array {
+            $round = $rounds->get($class->id);
+            $byStudent = $round === null ? collect() : ($records->get($round->id) ?? collect())->keyBy('student_id');
+            $students = KazakhSort::sort(
+                ($enrollments->get($class->id) ?? collect())->map(static fn (StudentEnrollment $e): Student => $e->student),
+                static fn (Student $s): array => [$s->last_name, $s->first_name, (string) $s->patronymic],
+            );
+            $rows = array_map(fn (Student $student): array => $this->studentRow($student, $byStudent->get($student->id)), $students);
+
+            return [
+                'class' => ['id' => $class->id, 'name' => $class->name()],
+                'round' => $round === null ? null : $this->roundSummary($round, $this->absentCount($rows)),
+                'students' => $rows,
+            ];
+        }, $sorted);
+    }
+
+    /**
      * Сыныптың бүгінгі тізімі және (болса) сақталған белгілері.
      *
      * @return array{round: array<string, mixed>|null, students: list<array<string, mixed>>}
@@ -70,24 +107,32 @@ class RoundService
         $round = $this->findRound($class, $code);
         $records = $round === null ? collect() : $round->records()->get()->keyBy('student_id');
 
-        $students = array_map(static function (Student $student) use ($records): array {
-            /** @var AttendanceRecord|null $record */
-            $record = $records->get($student->id);
+        $students = array_map(
+            fn (Student $student): array => $this->studentRow($student, $records->get($student->id)),
+            $this->enrollments->roster($class, CarbonImmutable::parse($code->date)),
+        );
 
-            return [
-                'id' => $student->id,
-                'last_name' => $student->last_name,
-                'first_name' => $student->first_name,
-                'patronymic' => $student->patronymic,
-                // Себеп, түсініктеме, кешігу сияқты өрістер кезекшіге берілмейді.
-                'status' => ($record?->round_status ?? RoundStatus::Present)->value,
-                'locked' => $record?->isLockedForDuty() ?? false,
-            ];
-        }, $this->enrollments->roster($class, CarbonImmutable::parse($code->date)));
+        return ['round' => $round === null ? null : $this->roundSummary($round, $this->absentCount($students)), 'students' => $students];
+    }
 
-        $absentCount = count(array_filter($students, static fn (array $s): bool => $s['status'] === RoundStatus::Absent->value));
+    /** @return array<string, mixed> */
+    private function studentRow(Student $student, ?AttendanceRecord $record): array
+    {
+        return [
+            'id' => $student->id,
+            'last_name' => $student->last_name,
+            'first_name' => $student->first_name,
+            'patronymic' => $student->patronymic,
+            // Себеп, түсініктеме, кешігу сияқты өрістер кезекшіге берілмейді.
+            'status' => ($record?->round_status ?? RoundStatus::Present)->value,
+            'locked' => $record?->isLockedForDuty() ?? false,
+        ];
+    }
 
-        return ['round' => $round === null ? null : $this->roundSummary($round, $absentCount), 'students' => $students];
+    /** @param  list<array<string, mixed>>  $students */
+    private function absentCount(array $students): int
+    {
+        return count(array_filter($students, static fn (array $s): bool => $s['status'] === RoundStatus::Absent->value));
     }
 
     /**
@@ -137,6 +182,7 @@ class RoundService
                 'class_id' => $class->id, 'date' => $code->date, 'shift' => $code->shift,
                 'duty_code_id' => $code->id, 'duty_session_id' => $session->id,
                 'client_uuid' => $clientUuid, 'client_time' => $clientTime,
+                'received_late' => $code->expires_at->isPast(),
             ]);
             $now = now();
             AttendanceRecord::query()->insert(array_map(static fn (int $id): array => [
@@ -214,6 +260,7 @@ class RoundService
             'revision' => $round->revision,
             'absent_count' => $absentCount,
             'saved_at' => $round->updated_at->toIso8601String(),
+            'received_late' => $round->received_late,
         ];
     }
 

@@ -200,18 +200,68 @@ class RoundTest extends DutyTestCase
         $this->assertSame(1, AttendanceAudit::query()->count());
     }
 
-    public function test_nothing_can_be_saved_after_the_shift_ends_or_without_a_code(): void
+    public function test_marks_made_during_the_shift_are_accepted_late_but_new_marks_after_it_are_not(): void
     {
         $uuid = $this->uuid();
-        $this->save(['Сынақов'], $uuid)->assertOk();
+        $second = $this->classWith('5Ә', ['Екіншіев Төртінші']);
+        $this->save(['Сынақов'], $uuid)->assertOk()->assertJsonPath('round.received_late', false);
 
-        $this->travelTo(CarbonImmutable::create(2026, 11, 20, 13, 10, 1));
+        // Смена бітті. Интернет енді ғана шықты: планшет смена кезінде (08:12) белгіленген сыныпты жібереді.
+        $this->travelTo(CarbonImmutable::create(2026, 11, 20, 15, 0));
         $this->app['auth']->forgetGuards();
-        $this->save([], $uuid, 1)->assertUnauthorized()->assertJsonPath('code', 'duty_code_ended');
+        $this->getJson('/api/duty/session')->assertUnauthorized()->assertJsonPath('code', 'duty_code_ended');
+        $this->getJson('/api/duty/rosters')->assertUnauthorized();
+        $this->save([], class: $second)->assertOk()->assertJsonPath('stored_as', 'round')->assertJsonPath('round.received_late', true);
+        $this->assertTrue(AttendanceRound::query()->where('class_id', $second->id)->sole()->received_late);
+
+        // Смена біткеннен кейін белгіленген не уақыты көрсетілмеген дерек қабылданбайды.
+        $late = ['client_uuid' => $uuid, 'absent_student_ids' => [], 'revision' => 1];
+        $this->putJson("/api/duty/classes/{$this->class->id}/round", $late + ['client_time' => '2026-11-20T13:10:01+05:00'])
+            ->assertUnauthorized()->assertJsonPath('code', 'duty_code_ended');
+        $this->putJson("/api/duty/classes/{$this->class->id}/round", $late)->assertUnauthorized();
         $this->assertSame(1, AttendanceRecord::query()->where('round_status', 'absent')->count());
 
+        // Келесі күні ештеңе қабылданбайды.
+        $this->travelTo(CarbonImmutable::create(2026, 11, 21, 0, 0, 1));
+        $this->app['auth']->forgetGuards();
+        $this->save(['Сынақов'], $uuid, 1)->assertUnauthorized()->assertJsonPath('code', 'duty_code_ended');
+    }
+
+    public function test_data_from_a_revoked_code_is_never_accepted(): void
+    {
+        $tablet = $this->defaultCookies;
+        $this->issue(); // жаңа код: ескісі жойылды
+        $this->app['auth']->forgetGuards();
+        $this->defaultCookies = $tablet;
+
+        $this->save(['Сынақов'])->assertUnauthorized()->assertJsonPath('code', 'duty_code_ended');
+        $this->assertSame(0, AttendanceRound::query()->count());
+    }
+
+    public function test_all_rosters_come_in_one_request_with_saved_marks(): void
+    {
+        $this->classWith('11А', ['Соңғыев Алтыншы']);
+        $this->classWith('6А', ['Бөтенов Бесінші'], Shift::Afternoon);
+        $this->save(['Сынақов'])->assertOk();
+
+        $response = $this->getJson('/api/duty/rosters')->assertOk();
+
+        $this->assertSame(['5А', '11А'], array_column(array_column($response->json('rosters'), 'class'), 'name'));
+        $response->assertJsonPath('rosters.0.round.absent_count', 1)->assertJsonPath('rosters.1.round', null);
+        $this->assertSame(['Әлібеков', 'Сынақов', 'Үлгіев'], array_column($response->json('rosters.0.students'), 'last_name'));
+        $this->assertSame(['present', 'absent', 'present'], array_column($response->json('rosters.0.students'), 'status'));
+        // Бір сыныптың жеке жауабымен бірдей пішім.
+        $this->assertSame($this->getJson("/api/duty/classes/{$this->class->id}")->json('students'), $response->json('rosters.0.students'));
+    }
+
+    public function test_nothing_can_be_saved_without_a_code(): void
+    {
+        $this->app['auth']->forgetGuards();
         $this->flushSession();
         $this->defaultCookies = [];
+
         $this->getJson("/api/duty/classes/{$this->class->id}")->assertUnauthorized()->assertJsonPath('code', 'duty_unauthenticated');
+        $this->save(['Сынақов'])->assertUnauthorized()->assertJsonPath('code', 'duty_unauthenticated');
+        $this->assertSame(0, AttendanceRound::query()->count());
     }
 }

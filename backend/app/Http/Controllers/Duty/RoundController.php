@@ -16,6 +16,16 @@ class RoundController extends Controller
 {
     public function __construct(private readonly RoundService $rounds) {}
 
+    /** Сменаның барлық сынып тізімі бір сұраныспен: планшет оларды интернетсіз жұмысқа сақтап алады. */
+    public function index(Request $request): JsonResponse
+    {
+        /** @var DutySession $session */
+        $session = $request->attributes->get('duty_session');
+
+        // Кирилл әріптері \uXXXX түрінде емес, сол күйінде жіберіледі: жауап екі есеге жуық кішірейеді (мектеп желісі баяу).
+        return response()->json(['rosters' => $this->rounds->rosters($session->code)], 200, [], JSON_UNESCAPED_UNICODE);
+    }
+
     public function show(Request $request, SchoolClass $class): JsonResponse
     {
         /** @var DutySession $session */
@@ -42,11 +52,18 @@ class RoundController extends Controller
             'client_time' => ['sometimes', 'nullable', 'date'],
         ]);
 
+        // Смена біткен соң тек смена кезінде белгіленген (планшеттің уақыты бойынша) дерек қабылданады.
+        // Планшет интерфейсі смена соңында белгілеуді жабады; бұл тексеріс соны серверде қайталайды.
+        $clientTime = isset($data['client_time']) ? CarbonImmutable::parse($data['client_time']) : null;
+        if ($session->code->expires_at->isPast() && ($clientTime === null || $clientTime->gt($session->code->expires_at))) {
+            return $this->error('duty_code_ended', 401);
+        }
+
         try {
             $result = $this->rounds->save(
                 $session, $class, strtolower($data['client_uuid']), $data['absent_student_ids'],
                 $data['revision'] ?? null,
-                isset($data['client_time']) ? CarbonImmutable::parse($data['client_time']) : null,
+                $clientTime,
             );
         } catch (DomainException $e) {
             return $this->error($e->getMessage(), match ($e->getMessage()) {

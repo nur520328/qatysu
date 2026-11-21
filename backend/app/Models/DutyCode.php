@@ -50,6 +50,15 @@ class DutyCode extends Model
         return $this->revoked_at === null && $this->expires_at->isFuture() ? $this->code_encrypted : null;
     }
 
+    /**
+     * Смена кезінде интернетсіз белгіленген дерек кейін де қабылданады: сол күннің соңына дейін,
+     * код жойылмаған болса. Жаңа кіру мен тізім көру бұл уақытта жабық.
+     */
+    public function acceptsLateSync(): bool
+    {
+        return $this->revoked_at === null && $this->date->isToday();
+    }
+
     /** Код дәл қазір кіруге және белгілеуге жарай ма. */
     public function isUsableNow(): bool
     {

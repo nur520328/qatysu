@@ -15,7 +15,8 @@ class EnsureDutySession
 {
     public const SESSION_KEY = 'duty_session_id';
 
-    public function handle(Request $request, Closure $next): Response
+    /** `sync` режимі: смена біткеннен кейін де, сол күні, жіберілмей қалған аралауды қабылдайды. */
+    public function handle(Request $request, Closure $next, string $mode = 'live'): Response
     {
         $id = $request->hasSession() ? $request->session()->get(self::SESSION_KEY) : null;
         $session = $id === null ? null : DutySession::query()->with('code')->find($id);
@@ -23,8 +24,9 @@ class EnsureDutySession
         if ($session === null) {
             return response()->json(['code' => 'duty_unauthenticated'], 401);
         }
-        if ($session->ended_at !== null || ! $session->code->isUsableNow()) {
-            $request->session()->forget(self::SESSION_KEY);
+        $allowed = $mode === 'sync' ? $session->code->acceptsLateSync() : $session->code->isUsableNow();
+        if ($session->ended_at !== null || ! $allowed) {
+            // Сеанс cookie-сі әдейі өшірілмейді: смена біткен соң да планшет жіберілмеген деректі жіберуі мүмкін.
 
             return response()->json(['code' => 'duty_code_ended'], 401);
         }

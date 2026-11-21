@@ -240,3 +240,16 @@ Frontend пен backend арасындағы келісім. Екі жақ та 
 - `revision` жіберіліп, сервердегіден өзгеше болса және дерек те өзгеше болса: `409 round_changed` (басқа планшет түзеген; тізімді қайта ашу керек).
 - `locked: true` оқушының белгісін кезекші өзгерте алмайды (мұғалім, жетекші не завуч тиген); өзгертуге әрекет жасалса, мән сақталып, нөмірі `kept_locked` тізімінде қайтады.
 - Қате код теру: бір мекенжайдан 5 минутта 5 рет; барлық мекенжайдан 5 минутта 40 рет.
+
+### 5-кезең қосымшалары
+
+| Әдіс | Жол | Жауап | Ескертпе |
+|---|---|---|---|
+| GET | `/api/duty/rosters` | `{"rosters": [roster]}` | сменаның барлық сыныбы бір сұраныспен (планшеттің интернетсіз қоймасы үшін); тек смена кезінде |
+| PUT | `/api/duty/classes/{id}/round` | бұрынғыдай | смена біткен соң да **сол күні** қабылданады, егер код жойылмаған және `client_time` смена соңынан бұрын болса; әйтпесе `401 duty_code_ended`. Мұндай аралауда `round.received_late: true` |
+| GET | `/api/admin/round-conflicts` | `{"conflicts": [conflict]}` | шешілмегендері |
+| POST | `/api/admin/round-conflicts/{id}/resolve` | `{"conflicts": [conflict]}` | `{"resolution": "keep"\|"replace"}`; `409 conflict_already_resolved` |
+
+- `round` енді `received_late` өрісін де қайтарады.
+- `conflict`: `{"id", "class": {"id", "name"}, "date", "student_count", "current": {"device_number", "saved_at", "absent": [{"id", "name"}]}, "incoming": {"device_number", "marked_at", "received_at", "absent": [{"id", "name"}]}}`.
+- `keep`: сервердегі нұсқа қалады, белгілер өзгермейді. `replace`: кейін жеткен нұсқа қолданылады; әр өзгеріс аудитке завуч атымен жазылады, өзгерген жазбаларды кезекші енді өзгерте алмайды.
