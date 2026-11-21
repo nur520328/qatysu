@@ -60,4 +60,16 @@ class CalendarService
 
         return $date === null ? null : CarbonImmutable::parse($date)->startOfDay();
     }
+
+    /** Көрсетілген күннің алдындағы соңғы оқу күні (күнтізбеде жоқ болса null). */
+    public function previousSchoolDay(CarbonImmutable $before): ?CarbonImmutable
+    {
+        $date = CalendarDay::query()
+            ->whereDate('date', '<', $before->toDateString())
+            ->where('is_school_day', true)
+            ->orderByDesc('date')
+            ->value('date');
+
+        return $date === null ? null : CarbonImmutable::parse($date)->startOfDay();
+    }
 }

@@ -12,7 +12,10 @@ export function shortStatus(row: Pick<TeacherRow, 'round_status' | 'arrived_less
 }
 
 /** Жетекшіге: қысқа күйге себеп пен рұқсат қосылады. */
-export function fullStatus(row: DayRow, t: TFunction): string {
+export function fullStatus(
+  row: Pick<DayRow, 'round_status' | 'arrived_lesson' | 'left_lesson' | 'absence_reason' | 'leave_permission' | 'pending'>,
+  t: TFunction,
+): string {
   const parts = [shortStatus(row, t)]
   if (row.absence_reason !== null) parts.push(t(`att.reason_${row.absence_reason}`))
   else if (row.pending === 'reason') parts.push(t('att.reasonMissing'))

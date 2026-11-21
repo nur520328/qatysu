@@ -149,7 +149,65 @@ export interface RoundConflict {
   incoming: ConflictSide & { marked_at: string | null; received_at: string }
 }
 
+/** Жиынтықта аты аталатын оқушы: күні бойы жоқ, кешіккен не кетіп қалған. */
+export interface SummaryPerson {
+  id: number
+  name: string
+  round_status: 'present' | 'absent'
+  full_absence: boolean
+  arrived_lesson: number | null
+  left_lesson: number | null
+  absence_reason: 'sick' | 'excused' | 'unexcused' | null
+  leave_permission: 'permitted' | 'unpermitted' | null
+  note: string | null
+  pending: 'reason' | 'permission' | null
+}
+
+export interface SummaryClass {
+  id: number
+  name: string
+  homeroom: string | null
+  students: number
+  surveyed: boolean
+  saved_at: string | null
+  received_late: boolean
+  unmarked: number
+  absent: number
+  late: number
+  left: number
+  pending: number
+  people: SummaryPerson[]
+}
+
+export interface SummaryShift {
+  shift: Shift
+  ended: boolean
+  classes_total: number
+  classes_surveyed: number
+  students: number
+  unmarked: number
+  absent: number
+  absent_by_reason: { sick: number; excused: number; unexcused: number; pending: number }
+  late: number
+  left: number
+  left_by_permission: { permitted: number; unpermitted: number; pending: number }
+  classes: SummaryClass[]
+}
+
+export interface DailySummary {
+  date: string
+  is_today: boolean
+  is_school_day: boolean
+  previous_school_day: string | null
+  next_school_day: string | null
+  open_conflicts: number
+  shifts: SummaryShift[]
+}
+
 export const adminApi = {
+  dailySummary: (date: string | null) =>
+    request<DailySummary>('GET', date === null ? '/admin/daily-summary' : `/admin/daily-summary?date=${date}`),
+
   roundConflicts: () => request<{ conflicts: RoundConflict[] }>('GET', '/admin/round-conflicts').then((r) => r.conflicts),
   resolveConflict: (id: number, resolution: 'keep' | 'replace') =>
     request<{ conflicts: RoundConflict[] }>('POST', `/admin/round-conflicts/${id}/resolve`, { resolution }).then((r) => r.conflicts),

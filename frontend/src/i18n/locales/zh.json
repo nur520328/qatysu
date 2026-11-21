@@ -58,7 +58,8 @@
     "users": "教师",
     "calendar": "校历",
     "settings": "设置",
-    "duty": "值日"
+    "duty": "值日",
+    "summary": "汇总"
   },
   "errors": {
     "network": "无法连接服务器，请检查网络。",
@@ -120,7 +121,8 @@
     "student_not_in_class": "这名学生不在这个班。",
     "reason_needs_full_absence": "只有全天缺勤的学生才能填写原因。",
     "permission_needs_leave": "只有中途离开的学生才能填写是否批准。",
-    "date_not_editable": "这一天不能修改。"
+    "date_not_editable": "这一天不能修改。",
+    "date_in_future": "不能打开未来的日期。"
   },
   "calendar": {
     "title": "校历",
@@ -482,5 +484,51 @@
     "reason": "需要填写原因",
     "permission": "需要确定是否批准",
     "myClass": "我的班级"
+  },
+  "daySummary": {
+    "title": "每日汇总",
+    "today": "今天，{{date}}",
+    "previous": "← 上一个上课日",
+    "next": "下一个上课日 →",
+    "toToday": "今天",
+    "refresh": "刷新",
+    "autoRefresh": "页面每分钟自动刷新。",
+    "notSchoolDay": "这一天不是上课日。",
+    "noClasses": "这一天没有班级。",
+    "conflicts_other": "有 {{count}} 个班被两台平板做了不同的标记：这些班的数字还不是最终结果。",
+    "conflictsLink": "去处理冲突",
+    "shiftRunning": "本班次进行中",
+    "shiftEnded": "本班次已结束",
+    "surveyed": "已巡查班级",
+    "students": "在册学生",
+    "absent": "全天缺勤",
+    "late": "迟到",
+    "left": "早退",
+    "pending": "待处理",
+    "unmarked": "未标记",
+    "absentBreakdown": "缺勤学生：生病 {{sick}} · 有正当理由 {{excused}} · 无故 {{unexcused}} · 未填原因 {{pending}}",
+    "leftBreakdown": "早退学生：经批准 {{permitted}} · 未经批准 {{unpermitted}} · 未确认 {{pending}}",
+    "notSurveyedTitle": "未巡查的班级：{{count}}",
+    "notYetSurveyedTitle": "尚未巡查的班级：{{count}}",
+    "homeroom": "班主任：{{name}}",
+    "noHomeroom": "未指定班主任",
+    "allSurveyed": "所有班级都已巡查。",
+    "peopleTitle": "缺勤、迟到和早退的学生",
+    "nobody": "没有这样的学生。",
+    "classesTitle": "按班级",
+    "colClass": "班级",
+    "colStudent": "学生",
+    "colStatus": "状态",
+    "colStudents": "在册",
+    "colAbsent": "缺勤",
+    "colLate": "迟到",
+    "colLeft": "早退",
+    "colUnmarked": "未标记",
+    "colRound": "巡查",
+    "roundAt": "{{time}}",
+    "roundLate": "{{time}}（延迟送达）",
+    "roundMissing": "未巡查",
+    "roundWaiting": "尚未巡查",
+    "openDay": "打开 {{name}} 班当天的页面"
   }
 }

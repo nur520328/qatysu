@@ -58,6 +58,9 @@ abstract class AdminTestCase extends TestCase
         ]);
     }
 
+    /** @var array<string, string> */
+    private array $xlsxBytes = [];
+
     /**
      * Сынақ үшін .xlsx файл жасайды. Кілті — парақ атауы, мәні — жолдар тізімі.
      *
@@ -65,16 +68,23 @@ abstract class AdminTestCase extends TestCase
      */
     protected function xlsx(array $sheets, string $name = 'tizim.xlsx'): UploadedFile
     {
-        $book = new Spreadsheet;
-        $book->removeSheetByIndex(0);
-        foreach ($sheets as $title => $rows) {
-            $sheet = $book->createSheet();
-            $sheet->setTitle((string) $title);
-            $sheet->fromArray($rows, null, 'A1', true);
-        }
+        // Бірдей мазмұн әрқашан байт-байт бірдей файл береді: Excel файлының ішінде жасалған уақыты бар,
+        // сондықтан секунд ауысқанда «сол файлды қайта жіберу» тесттері кездейсоқ құлайтын.
+        $key = md5(serialize($sheets));
         $path = tempnam(sys_get_temp_dir(), 'qatysu').'.xlsx';
-        (new Xlsx($book))->save($path);
-        $book->disconnectWorksheets();
+        if (! isset($this->xlsxBytes[$key])) {
+            $book = new Spreadsheet;
+            $book->removeSheetByIndex(0);
+            foreach ($sheets as $title => $rows) {
+                $sheet = $book->createSheet();
+                $sheet->setTitle((string) $title);
+                $sheet->fromArray($rows, null, 'A1', true);
+            }
+            (new Xlsx($book))->save($path);
+            $book->disconnectWorksheets();
+            $this->xlsxBytes[$key] = (string) file_get_contents($path);
+        }
+        file_put_contents($path, $this->xlsxBytes[$key]);
         $this->tempFiles[] = $path;
 
         return new UploadedFile($path, $name, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);

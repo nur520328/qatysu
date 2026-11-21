@@ -1,5 +1,5 @@
 // Тізбекті нақты браузерде тексереді: кезекші белгіледі → пән мұғалімі кешігу мен кетуді тіркеді (телефон) →
-// сынып жетекшісі себеп пен рұқсат қойды, тарихын көрді → завуч сол күнді ашты.
+// сынып жетекшісі себеп пен рұқсат қойды, тарихын көрді → завуч сол күнді ашты және күнделікті жиынтықты көрді.
 // Алдын ала: migrate:fresh --seed, db:seed --class=DemoSeeder, serve + vite.
 // E2E_TEACHER — жетекші емес мұғалімнің логині, E2E_HOMEROOM — 7Ә жетекшісінің логині.
 import { chromium } from 'playwright-core'
@@ -136,6 +136,28 @@ try {
   await adminPage.getByText('Бәрі анықталған.').waitFor()
   await adminPage.getByText('жоқ · ауырды · анықтама әкеледі').waitFor()
   step('завуч сынып бетінен сол күннің қатысуын ашты')
+
+  // Завучтың күнделікті жиынтығы: сандар мен оқушылардың күйі сол тізбекке сәйкес.
+  await adminPage.getByRole('link', { name: 'Жиынтық', exact: true }).click()
+  const summary = adminPage.getByRole('region', { name: 'Түстен кейінгі смена' })
+  const stats = summary.getByRole('status')
+  await stats.getByText(/^1 \/ \d+$/).waitFor()
+  for (const [value, label] of [['1', 'күні бойы жоқ'], ['1', 'кешікті'], ['1', 'кетіп қалды'], ['0', 'шешім күтеді']]) {
+    const found = await stats.locator('.stat', { hasText: label }).locator('b').textContent()
+    if (found !== value) throw new Error(`жиынтық «${label}»: ${found}, күтілгені ${value}`)
+  }
+  await summary.getByText('Жоқ оқушылар: ауырды 1 · себепті 0 · себепсіз 0 · себебі көрсетілмеген 0').waitFor()
+  await summary.getByText('Кетіп қалғандар: рұқсатпен 0 · рұқсатсыз 1 · анықталмаған 0').waitFor()
+  await summary.getByRole('row', { name: new RegExp(`${sick}.*жоқ · ауырды · анықтама әкеледі`) }).waitFor()
+  await summary.getByRole('row', { name: new RegExp(`${late}.*3-сабақтан келді`) }).waitFor()
+  await summary.getByRole('row', { name: new RegExp(`${leaver}.*бар · 5-сабақтан кетіп қалды · рұқсатсыз`) }).waitFor()
+  await summary.getByRole('region', { name: /^Әлі аралынбаған сыныптар: \d+$/ }).getByRole('link', { name: '7Б сыныбының күнін ашу' }).waitFor()
+  await shot(adminPage, 'summary')
+  await summary.getByRole('link', { name: '7Ә сыныбының күнін ашу' }).first().click()
+  await adminPage.getByText('Бәрі анықталған.').waitFor()
+  await adminPage.getByRole('link', { name: '← Жиынтық' }).click()
+  await adminPage.getByRole('heading', { name: 'Күнделікті жиынтық' }).waitFor()
+  step('завуч жиынтығы: 1 сынып аралынды, 1 жоқ (ауырды), 1 кешікті, 1 кетті (рұқсатсыз); сыныптан жиынтыққа қайтты')
 
   // Кезекші енді бұл үш оқушының белгісін өзгерте алмайды.
   // Планшет тізімдерді серверден 20 секунд сайын және бет ашылғанда жаңартады; жаңарғанын күтеміз.

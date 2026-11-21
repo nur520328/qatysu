@@ -1118,3 +1118,22 @@ button.tile {
   font-size: 0.9375rem;
   line-height: 1.6;
 }
+
+/* Күнделікті жиынтық */
+.summary__list {
+  margin: 0;
+  padding-left: 1.25rem;
+  line-height: 1.8;
+  /* Аралау басталмай тұрғанда тізім ұзын болады: кең экранда бірнеше бағанға бөлінеді. */
+  columns: 22rem;
+  column-gap: 2rem;
+}
+
+.summary__list li {
+  break-inside: avoid;
+}
+
+.summary__pending {
+  color: var(--danger-ink);
+  font-weight: 500;
+}

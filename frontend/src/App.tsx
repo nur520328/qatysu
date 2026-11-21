@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, useParams } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from './auth/context'
 import { ChangePasswordPage } from './pages/ChangePasswordPage'
@@ -6,6 +6,7 @@ import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { DutyApp } from './pages/duty/DutyApp'
 import { DutyPage } from './pages/admin/DutyPage'
+import { SummaryPage } from './pages/admin/SummaryPage'
 import { DayPage } from './pages/staff/DayPage'
 import { RegisterPage } from './pages/staff/RegisterPage'
 import { Shell } from './components/Shell'
@@ -32,7 +33,12 @@ function TeacherDay() {
 /** Завучтың күн беті: әкімші мәзірінің ішінде, кез келген сыныпқа. */
 function AdminDay() {
   const { t } = useTranslation()
-  const { classId } = useParams()
+  const { classId, date } = useParams()
+  const { state } = useLocation()
+  // Жиынтықтан ашылса, «артқа» сол күннің жиынтығына қайтарады.
+  if ((state as { from?: string } | null)?.from === 'summary') {
+    return <DayPage base="/admin/attendance" backTo={`/admin/summary?date=${date}`} backLabel={t('nav.summary')} />
+  }
   return <DayPage base="/admin/attendance" backTo={`/admin/classes/${classId}`} backLabel={t('nav.classes')} />
 }
 
@@ -79,6 +85,7 @@ export function App() {
         <Route path="import/students" element={<ImportStudentsPage />} />
         <Route path="import/teachers" element={<ImportTeachersPage />} />
         <Route path="duty" element={<DutyPage />} />
+        <Route path="summary" element={<SummaryPage />} />
         <Route path="attendance/:classId/:date" element={<AdminDay />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="calendar" element={<CalendarPage />} />

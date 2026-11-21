@@ -288,3 +288,19 @@ Frontend пен backend арасындағы келісім. Екі жақ та 
 - Себеп тек күні бойы болмаған оқушыға (жоқ, келмеген, кетпеген); рұқсат тек кетіп қалған оқушыға. Оқушы «келді» не «кетті» болып өзгерсе, себеп өзі алынады; кету алынса, рұқсат өзі алынады (екеуі де тарихқа жазылады).
 - Жетекші не завуч өзгерткен «бар/жоқ» белгісін кезекші енді өзгерте алмайды.
 - `duty: null` — сол күні кезекші сыныпты араламаған.
+
+## Күнделікті жиынтық (`/api/admin/daily-summary`, тек `admin`)
+
+Ештеңе сақталмайды: әр сұраныста жазбалардан есептеледі. Жауап кэштелмейді (`Cache-Control: no-store`).
+
+| Әдіс | Жол | Сұраныс | Жауап | Қателер |
+|---|---|---|---|---|
+| GET | `/daily-summary?date=YYYY-MM-DD` | `date` болмаса бүгін | `{"date", "is_today", "is_school_day", "previous_school_day", "next_school_day", "open_conflicts", "shifts": [shift]}` | `422 invalid_date`, `422 date_in_future` |
+
+- `shift`: `{"shift": "morning"|"afternoon", "ended", "classes_total", "classes_surveyed", "students", "unmarked", "absent", "absent_by_reason": {"sick", "excused", "unexcused", "pending"}, "late", "left", "left_by_permission": {"permitted", "unpermitted", "pending"}, "classes": [class]}`.
+- `class`: `{"id", "name", "homeroom": аты-жөні|null, "students", "surveyed", "saved_at", "received_late", "unmarked", "absent", "late", "left", "pending", "people": [person]}`; параллель, сосын әріп ретімен.
+- `person` (тек күні бойы жоқ, кешіккен не кеткен оқушылар): `{"id", "name", "round_status", "full_absence", "arrived_lesson", "left_lesson", "absence_reason", "leave_permission", "note", "pending"}`.
+- `absent` — күні бойы жоқ («жоқ» белгісі бар, келуі де, кетуі де тіркелмеген); `late` — `arrived_lesson` толтырылған; `left` — `left_lesson` толтырылған. Бір оқушы `late` пен `left`-ке қатар кіре алады.
+- `surveyed: false` — кезекші сыныпты араламаған. Ондай сыныпта мұғалім не жетекші тіркегендер саналады, қалғаны `unmarked`.
+- `next_school_day` бүгіннен аспайды. Сыныптар сол күн кіретін оқу жылынан; оқушы саны сол күнгі тіркелу бойынша.
+- `ended`: сол күннің сменасы аяқталды ма (өткен күн үшін әрқашан `true`).

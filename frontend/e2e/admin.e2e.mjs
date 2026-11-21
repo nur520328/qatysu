@@ -107,7 +107,7 @@ try {
   await page.getByRole('searchbox').fill('')
   await shot('users')
 
-  await page.getByRole('link', { name: 'Баптау' }).click()
+  await page.getByRole('link', { name: 'Баптау', exact: true }).click()
   await page.getByLabel(/Бір сменадағы ең көп сабақ саны/).fill('8')
   await page.getByRole('button', { name: 'Сақтау' }).click()
   await page.getByRole('status').getByText('Сақталды.').waitFor()

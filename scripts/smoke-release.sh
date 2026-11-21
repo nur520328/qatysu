@@ -134,9 +134,23 @@ if [ "$(TZ=Asia/Almaty date +%H)" -lt 22 ]; then
   [ "$(json PATCH "/api/homeroom/classes/$CLASS_ID/days/$TODAY/students/$OTHER_ID" '{"absence_reason":"sick"}')" = 422 ] || fail "сәйкессіз себеп қабылданды"
   curl -s -b "$JAR" -H 'Accept: application/json' -H "Origin: $BASE" "$BASE/api/homeroom/pending" | grep -q '"kind":"permission"' || fail "анықталмағандар тізімі қате"
   curl -s -b "$JAR" -H 'Accept: application/json' -H "Origin: $BASE" "$BASE/api/homeroom/classes/$CLASS_ID/days/$TODAY/students/$STUDENT_ID/history" | grep -q '"field":"absence_reason"' || fail "тарих жазылмады"
+  # Күнделікті жиынтық (7-кезең): бір сынып аралынды, бір оқушы ауырды, бір оқушы кетіп қалды.
+  curl -s -b "$JAR" -H 'Accept: application/json' -H "Origin: $BASE" "$BASE/api/admin/daily-summary" > "$WORK/summary.json"
+  python3 - "$WORK/summary.json" <<'PY' || fail "күнделікті жиынтық сандары қате"
+import json, sys
+shifts = json.load(open(sys.argv[1]))["shifts"]
+total = lambda key: sum(s[key] for s in shifts)
+assert total("classes_surveyed") == 1 and total("absent") == 1 and total("left") == 1 and total("late") == 0, shifts
+assert sum(s["absent_by_reason"]["sick"] for s in shifts) == 1 and sum(s["left_by_permission"]["pending"] for s in shifts) == 1
+PY
 else
   echo "   (22:00-ден кейін: кезекші тексерісі өткізілмеді, смена уақыты жетпейді)"
 fi
+# Жиынтық беті кез келген уақытта ашылады; болашақ күн мен кірмеген адамға ашылмайды.
+[ "$(curl -s -o "$WORK/summary.json" -w '%{http_code}' -b "$JAR" -H 'Accept: application/json' -H "Origin: $BASE" "$BASE/api/admin/daily-summary")" = 200 ] || fail "күнделікті жиынтық ашылмады"
+grep -q '"shifts":\[' "$WORK/summary.json" || fail "күнделікті жиынтық жауабы қате"
+[ "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -H 'Accept: application/json' -H "Origin: $BASE" "$BASE/api/admin/daily-summary?date=2099-01-01")" = 422 ] || fail "болашақ күннің жиынтығы ашылды"
+[ "$(curl -s -o /dev/null -w '%{http_code}' -H 'Accept: application/json' "$BASE/api/admin/daily-summary")" = 401 ] || fail "жиынтық кірмеген адамға ашық"
 
 echo "== Сақтық көшірме: жасау, жүктеу, қалпына келтіру, кесте"
 php artisan qatysu:backup | grep -q "КӨШІРМЕ ЖАСАЛДЫ" || fail "көшірме жасалмады"

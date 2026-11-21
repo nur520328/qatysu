@@ -88,6 +88,46 @@ class ScaleTest extends TestCase
         }
     }
 
+    public function test_daily_summary_stays_cheap_when_every_class_is_surveyed(): void
+    {
+        $this->travelTo(CarbonImmutable::create(2026, 11, 20, 19, 0));
+        $this->seed(DemoSeeder::class);
+        $admin = User::factory()->admin()->create();
+
+        // Ауыр күн: 44 сыныптың бәрі аралынған, әр сыныпта 3 оқушы жоқ, 1 кешіккен, 1 кеткен.
+        $records = [];
+        foreach (SchoolClass::query()->get() as $class) {
+            $roundId = DB::table('attendance_rounds')->insertGetId([
+                'class_id' => $class->id, 'date' => '2026-11-20', 'shift' => $class->shift->value, 'client_uuid' => (string) Str::uuid(),
+                'revision' => 1, 'received_late' => false, 'duty_done' => true, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+            $students = DB::table('student_enrollments')->where('class_id', $class->id)->orderBy('student_id')->pluck('student_id');
+            foreach ($students as $i => $studentId) {
+                $records[] = [
+                    'round_id' => $roundId, 'student_id' => $studentId, 'round_status' => $i < 4 ? 'absent' : 'present', 'round_status_source' => 'duty',
+                    'arrived_lesson' => $i === 3 ? 2 : null, 'left_lesson' => $i === 4 ? 5 : null, 'absence_reason' => $i === 0 ? 'sick' : null,
+                    'created_at' => now(), 'updated_at' => now(),
+                ];
+            }
+        }
+        foreach (array_chunk($records, 500) as $chunk) {
+            DB::table('attendance_records')->insert($chunk);
+        }
+
+        $summary = $this->measure(fn () => $this->actingAs($admin)->getJson('/api/admin/daily-summary')->assertOk());
+        $shifts = $summary['response']->json('shifts');
+        $this->assertSame([44, 44, 1100, 0, 132, 44, 44], [
+            array_sum(array_column($shifts, 'classes_total')), array_sum(array_column($shifts, 'classes_surveyed')), array_sum(array_column($shifts, 'students')),
+            array_sum(array_column($shifts, 'unmarked')), array_sum(array_column($shifts, 'absent')), array_sum(array_column($shifts, 'late')), array_sum(array_column($shifts, 'left')),
+        ]);
+        $this->assertSame(88, array_sum(array_column(array_column($shifts, 'absent_by_reason'), 'pending')));
+
+        // Сұраныс саны тұрақты (сынып не оқушы санына тәуелді емес): сессия, күнтізбе, баптау, тізімдер.
+        $this->assertLessThanOrEqual(20, $summary['queries'], "жиынтық: сұраныс тым көп ({$summary['queries']})");
+        $this->assertLessThan(500, $summary['ms'], "жиынтық: тым баяу ({$summary['ms']} мс)");
+        $this->assertLessThan(80_000, strlen($summary['response']->getContent()), 'жиынтық жауабы тым үлкен: '.strlen($summary['response']->getContent()));
+    }
+
     public function test_full_school_student_file_imports_without_per_row_queries(): void
     {
         $this->travelTo(CarbonImmutable::create(2026, 11, 20, 10));

@@ -58,7 +58,8 @@
     "users": "Мұғалімдер",
     "calendar": "Күнтізбе",
     "settings": "Баптау",
-    "duty": "Кезекші"
+    "duty": "Кезекші",
+    "summary": "Жиынтық"
   },
   "errors": {
     "network": "Серверге қосылу мүмкін болмады. Интернетті тексеріңіз.",
@@ -120,7 +121,8 @@
     "student_not_in_class": "Бұл оқушы осы сыныпта жоқ.",
     "reason_needs_full_absence": "Себеп тек күні бойы болмаған оқушыға қойылады.",
     "permission_needs_leave": "Рұқсат тек кетіп қалған оқушыға қойылады.",
-    "date_not_editable": "Бұл күнді өзгертуге болмайды."
+    "date_not_editable": "Бұл күнді өзгертуге болмайды.",
+    "date_in_future": "Болашақ күнді ашуға болмайды."
   },
   "calendar": {
     "title": "Оқу күнтізбесі",
@@ -494,5 +496,52 @@
     "reason": "себебін көрсету керек",
     "permission": "рұқсатын анықтау керек",
     "myClass": "Менің сыныбым"
+  },
+  "daySummary": {
+    "title": "Күнделікті жиынтық",
+    "today": "Бүгін, {{date}}",
+    "previous": "← Алдыңғы оқу күні",
+    "next": "Келесі оқу күні →",
+    "toToday": "Бүгін",
+    "refresh": "Жаңарту",
+    "autoRefresh": "Бет минут сайын өзі жаңарады.",
+    "notSchoolDay": "Бұл күн оқу күні емес.",
+    "noClasses": "Бұл күнге сыныптар жоқ.",
+    "conflicts_one": "{{count}} сыныпты екі планшет екі түрлі белгілеген: оның саны әлі түпкілікті емес.",
+    "conflicts_other": "{{count}} сыныпты екі планшет екі түрлі белгілеген: олардың саны әлі түпкілікті емес.",
+    "conflictsLink": "Қақтығысты шешу",
+    "shiftRunning": "смена жүріп жатыр",
+    "shiftEnded": "смена аяқталды",
+    "surveyed": "сынып аралынды",
+    "students": "оқушы тізімде",
+    "absent": "күні бойы жоқ",
+    "late": "кешікті",
+    "left": "кетіп қалды",
+    "pending": "шешім күтеді",
+    "unmarked": "белгіленбеген",
+    "absentBreakdown": "Жоқ оқушылар: ауырды {{sick}} · себепті {{excused}} · себепсіз {{unexcused}} · себебі көрсетілмеген {{pending}}",
+    "leftBreakdown": "Кетіп қалғандар: рұқсатпен {{permitted}} · рұқсатсыз {{unpermitted}} · анықталмаған {{pending}}",
+    "notSurveyedTitle": "Аралынбаған сыныптар: {{count}}",
+    "notYetSurveyedTitle": "Әлі аралынбаған сыныптар: {{count}}",
+    "homeroom": "жетекшісі: {{name}}",
+    "noHomeroom": "жетекшісі тағайындалмаған",
+    "allSurveyed": "Барлық сынып аралынды.",
+    "peopleTitle": "Жоқ, кешіккен және кетіп қалған оқушылар",
+    "nobody": "Мұндай оқушы жоқ.",
+    "classesTitle": "Сыныптар бойынша",
+    "colClass": "Сынып",
+    "colStudent": "Оқушы",
+    "colStatus": "Күйі",
+    "colStudents": "Тізімде",
+    "colAbsent": "Жоқ",
+    "colLate": "Кешікті",
+    "colLeft": "Кетті",
+    "colUnmarked": "Белгіленбеген",
+    "colRound": "Аралау",
+    "roundAt": "{{time}}",
+    "roundLate": "{{time}} (кеш жетті)",
+    "roundMissing": "аралынбады",
+    "roundWaiting": "әлі жоқ",
+    "openDay": "{{name}} сыныбының күнін ашу"
   }
 }

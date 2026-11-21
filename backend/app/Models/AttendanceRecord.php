@@ -41,4 +41,20 @@ class AttendanceRecord extends Model
     {
         return $this->round_status_source === 'staff' || $this->arrived_lesson !== null || $this->left_lesson !== null || $this->absence_reason !== null;
     }
+
+    /** Күні бойы жоқ: «жоқ» деп белгіленген, келуі де, кетуі де тіркелмеген. */
+    public function isFullAbsence(): bool
+    {
+        return $this->round_status === RoundStatus::Absent && $this->arrived_lesson === null && $this->left_lesson === null;
+    }
+
+    /** Жетекшінің қандай шешімі күтіліп тұр: permission (кетуге рұқсат), reason (жоқ болу себебі) не null. */
+    public function pendingKind(): ?string
+    {
+        return match (true) {
+            $this->left_lesson !== null && $this->leave_permission === null => 'permission',
+            $this->isFullAbsence() && $this->absence_reason === null => 'reason',
+            default => null,
+        };
+    }
 }

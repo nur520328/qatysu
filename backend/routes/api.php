@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AcademicYearController;
 use App\Http\Controllers\Admin\BackupController;
+use App\Http\Controllers\Admin\DailySummaryController;
 use App\Http\Controllers\Admin\DutyCodeController;
 use App\Http\Controllers\Admin\ImportController;
 use App\Http\Controllers\Admin\RoundConflictController;
@@ -62,6 +63,8 @@ Route::middleware(['auth:sanctum', 'account'])->group(function () {
         Route::get('duty-codes', [DutyCodeController::class, 'index']);
         Route::post('duty-codes', [DutyCodeController::class, 'store']);
         Route::delete('duty-codes/{code}', [DutyCodeController::class, 'destroy']);
+
+        Route::get('daily-summary', [DailySummaryController::class, 'show']);
 
         Route::get('round-conflicts', [RoundConflictController::class, 'index']);
         Route::post('round-conflicts/{conflict}/resolve', [RoundConflictController::class, 'resolve']);

@@ -18,6 +18,12 @@ const WEEKDAYS: Record<Language, string[]> = {
   zh: ['一', '二', '三', '四', '五', '六', '日'],
 }
 
+const WEEKDAYS_FULL: Record<Language, string[]> = {
+  kk: ['дүйсенбі', 'сейсенбі', 'сәрсенбі', 'бейсенбі', 'жұма', 'сенбі', 'жексенбі'],
+  ru: ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'],
+  zh: ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'],
+}
+
 function lang(language: string): Language {
   return language === 'ru' || language === 'zh' ? language : 'kk'
 }
@@ -55,6 +61,12 @@ export function weekdayIndex(value: string): number {
 /** Аптаның қысқа күн атаулары, дүйсенбіден бастап. */
 export function weekdayNames(language: string): string[] {
   return WEEKDAYS[lang(language)]
+}
+
+/** «20 қараша, жұма» / «20 ноября, пятница» / «11月20日 星期五». */
+export function dayMonthWeekday(value: string, language: string): string {
+  const l = lang(language)
+  return `${dayMonth(value, language)}${l === 'zh' ? ' ' : ', '}${WEEKDAYS_FULL[l][weekdayIndex(value)]}`
 }
 
 /** Серверден келген уақытты «21 қараша, 02:30» түрінде, Қазақстан уақытымен (UTC+5) көрсетеді. */

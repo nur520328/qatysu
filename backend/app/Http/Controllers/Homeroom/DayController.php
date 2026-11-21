@@ -157,7 +157,7 @@ class DayController extends Controller
                 'class' => ['id' => $round->class_id, 'name' => $classes[$round->class_id]->name()],
                 'date' => $round->date->toDateString(),
                 'student' => ['id' => $student->id, 'name' => $names[$student->id]],
-                'kind' => $record->left_lesson !== null ? 'permission' : 'reason',
+                'kind' => $record->pendingKind(),
             ];
         })->all();
 
@@ -203,8 +203,6 @@ class DayController extends Controller
     /** @return array<string, mixed> */
     private function row(Student $student, ?AttendanceRecord $record): array
     {
-        $fullAbsence = $record !== null && $record->round_status === RoundStatus::Absent && $record->arrived_lesson === null && $record->left_lesson === null;
-
         return [
             'id' => $student->id,
             'last_name' => $student->last_name,
@@ -217,12 +215,7 @@ class DayController extends Controller
             'absence_reason' => $record?->absence_reason,
             'leave_permission' => $record?->leave_permission,
             'note' => $record?->note,
-            'pending' => match (true) {
-                $record === null => null,
-                $record->left_lesson !== null && $record->leave_permission === null => 'permission',
-                $fullAbsence && $record->absence_reason === null => 'reason',
-                default => null,
-            },
+            'pending' => $record?->pendingKind(),
         ];
     }
 }

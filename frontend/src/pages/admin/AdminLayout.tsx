@@ -8,6 +8,7 @@ import { useLoad } from '../../lib/useLoad'
 
 const LINKS = [
   { to: '/admin/duty', key: 'nav.duty' },
+  { to: '/admin/summary', key: 'nav.summary' },
   { to: '/admin/classes', key: 'nav.classes' },
   { to: '/admin/users', key: 'nav.users' },
   { to: '/admin/calendar', key: 'nav.calendar' },
