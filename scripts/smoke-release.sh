@@ -68,5 +68,36 @@ code "$BASE/sanctum/csrf-cookie" >/dev/null
 [ "$(code -X POST -H 'Content-Type: application/json' -H "X-XSRF-TOKEN: $(xsrf)" -d "$BODY" "$BASE/api/auth/login")" = 200 ] || fail "жаңа бір реттік парольмен кіру сәтсіз"
 curl -s -b "$JAR" -H 'Accept: application/json' -H "Origin: $BASE" "$BASE/api/auth/me" | grep -q '"must_change_password":true' || fail "кіргеннен кейін пайдаланушы қайтпады"
 
+echo "== Завуч жұмысы (3-кезең): жыл, сыныптар, Excel-ден жүктеу"
+json() { code -X "$1" -H 'Content-Type: application/json' -H "X-XSRF-TOKEN: $(xsrf)" -d "$3" "$BASE$2"; }
+[ "$(code "$BASE/api/admin/classes")" = 403 ] || fail "бір реттік парольмен әкімші API ашық"
+BODY="$(python3 -c "import json,sys; print(json.dumps({'current_password':sys.argv[1],'new_password':'smoke-parol-7'}))" "$NEW")"
+[ "$(json POST /api/auth/password "$BODY")" = 200 ] || fail "пароль ауыспады"
+[ "$(json POST /api/admin/academic-years '{"name":"2026–2027","start_date":"2026-09-01","end_date":"2027-05-25"}')" = 201 ] || fail "оқу жылы ашылмады"
+[ "$(json POST /api/admin/classes/bulk '{"grade":7,"letters":["А","Ә"],"shift":"afternoon"}')" = 201 ] || fail "сыныптар ашылмады"
+python3 - "$WORK" <<'PY'
+import sys
+from openpyxl import Workbook
+wb = Workbook(); ws = wb.active; ws.title = '7Ә'
+ws.append(['№', 'Тегі', 'Аты', 'Әкесінің аты', 'Оқу тілі', 'Сынып'])
+ws.append([1, 'Сынақов', 'Бірінші', None, 'қазақ', '7Ә'])
+ws.append([2, 'Әлібеков', 'Екінші', 'Үлгіұлы', 'қазақ', '7Ә'])
+wb.save(sys.argv[1] + '/oqushylar.xlsx')
+wb = Workbook(); ws = wb.active
+ws.append(['№', 'Тегі', 'Аты', 'Әкесінің аты', 'Жетекші сыныбы', 'Логин'])
+ws.append([1, 'Жасандыева', 'Айгүл', None, '7Ә', None])
+wb.save(sys.argv[1] + '/mugalimder.xlsx')
+PY
+upload() { curl -s -b "$JAR" -c "$JAR" -H 'Accept: application/json' -H "Origin: $BASE" -H "X-XSRF-TOKEN: $(xsrf)" "$@"; }
+digest() { python3 -c "import json,sys; print(json.load(sys.stdin)['digest'])"; }
+D="$(upload -F "file=@$WORK/oqushylar.xlsx" "$BASE/api/admin/import/students" | digest)" || fail "оқушылар файлы оқылмады (Excel кітапханасы архивте жұмыс істемейді?)"
+upload -F "file=@$WORK/oqushylar.xlsx" --form-string "digest=$D" "$BASE/api/admin/import/students" | grep -q '"imported":2' || fail "оқушылар жүктелмеді"
+D="$(upload -F "file=@$WORK/mugalimder.xlsx" "$BASE/api/admin/import/teachers" | digest)" || fail "мұғалімдер файлы оқылмады"
+upload -F "file=@$WORK/mugalimder.xlsx" --form-string "digest=$D" "$BASE/api/admin/import/teachers" | grep -q '"login":"zhasandyeva.a"' || fail "мұғалім жүктелмеді"
+curl -s -b "$JAR" -H 'Accept: application/json' -H "Origin: $BASE" "$BASE/api/admin/classes" | grep -q '"student_count":2' || fail "сыныпта оқушы саны қате"
+[ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/templates/mugalimder-ulgi.xlsx")" = 200 ] || fail "мұғалімдер үлгі файлы берілмеді"
+
 grep -q "production.ERROR" storage/logs/*.log 2>/dev/null && fail "серверлік журналда қате бар" || true
+# Журнал тексерілгеннен кейін: бұл команда әдейі қатемен аяқталуы тиіс.
+php artisan db:seed --class=DemoSeeder --force >/dev/null 2>&1 && fail "жасанды дерек өндірістік ортада жүктелді" || true
 echo "== Архив тексерістен өтті: $(basename "$ZIP")"

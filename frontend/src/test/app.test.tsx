@@ -18,6 +18,20 @@ const teacher: User = {
   homeroom_classes: ['7Ә'],
 }
 
+// Жетекшінің бастапқы беті өз сыныбының тізімін сұрайды (дерек ойдан шығарылған).
+const home = {
+  'GET /api/teacher/homeroom': () => ({
+    status: 200,
+    body: {
+      date: '2026-11-20',
+      classes: [{
+        class: { id: 5, name: '7Ә', grade: 7, letter: 'Ә', shift: 'afternoon', language: 'kk', is_active: true, homeroom: null, student_count: 1 },
+        students: [{ id: 40, last_name: 'Сынақов', first_name: 'Бірінші', patronymic: null, class_id: 5 }],
+      }],
+    },
+  }),
+}
+
 function renderApp() {
   return render(
     <MemoryRouter>
@@ -34,13 +48,13 @@ beforeEach(() => {
 
 describe('кіру', () => {
   it('кірмеген адамға кіру беті көрсетіледі', async () => {
-    mockServer({ 'GET /api/auth/me': () => ({ status: 401, body: { code: 'unauthenticated' } }) })
+    mockServer({ ...home, 'GET /api/auth/me': () => ({ status: 401, body: { code: 'unauthenticated' } }) })
     renderApp()
     expect(await screen.findByRole('heading', { name: 'Кіру' })).toBeInTheDocument()
   })
 
   it('дұрыс логин-парольмен бастапқы бет ашылады, CSRF белгісі жіберіледі', async () => {
-    const calls = mockServer({
+    const calls = mockServer({ ...home,
       'GET /api/auth/me': () => ({ status: 401 }),
       'POST /api/auth/login': (init) => {
         expect(new Headers(init?.headers).get('X-XSRF-TOKEN')).toBe('test-token')
@@ -55,7 +69,11 @@ describe('кіру', () => {
     await user.click(screen.getByRole('button', { name: 'Кіру' }))
 
     expect(await screen.findByRole('heading', { name: 'Сәлеметсіз бе, Сынақ Мұғалім!' })).toBeInTheDocument()
-    expect(screen.getByText('7Ә сынып жетекшісі')).toBeInTheDocument()
+    const roster = await screen.findByRole('region', { name: '7Ә сыныбы' })
+    expect(roster).toHaveTextContent('Сынақов Бірінші')
+    expect(roster).toHaveTextContent('1 оқушы')
+    // Мұғалімге тізімді өзгертетін батырма берілмейді.
+    expect(roster.querySelector('button')).toBeNull()
     expect(calls.find((c) => c.key === 'POST /api/auth/login')?.body).toEqual({
       login: 'mugalim7',
       password: 'qupiya123',
@@ -63,7 +81,7 @@ describe('кіру', () => {
   })
 
   it('қате пароль туралы хабар шығады', async () => {
-    mockServer({
+    mockServer({ ...home,
       'GET /api/auth/me': () => ({ status: 401 }),
       'POST /api/auth/login': () => ({ status: 422, body: { code: 'invalid_credentials' } }),
     })
@@ -78,7 +96,7 @@ describe('кіру', () => {
   })
 
   it('тым көп әрекеттен кейін бөлек хабар шығады', async () => {
-    mockServer({
+    mockServer({ ...home,
       'GET /api/auth/me': () => ({ status: 401 }),
       'POST /api/auth/login': () => ({ status: 429 }),
     })
@@ -95,7 +113,7 @@ describe('кіру', () => {
 
 describe('бір реттік пароль', () => {
   it('ауыстырылмайынша бастапқы бет ашылмайды', async () => {
-    mockServer({
+    mockServer({ ...home,
       'GET /api/auth/me': () => ({ status: 200, body: { user: { ...teacher, must_change_password: true } } }),
       'POST /api/auth/password': () => ({ status: 200, body: { user: teacher } }),
     })
@@ -114,7 +132,7 @@ describe('бір реттік пароль', () => {
   })
 
   it('сәйкес келмейтін парольдер серверге жіберілмейді', async () => {
-    const calls = mockServer({
+    const calls = mockServer({ ...home,
       'GET /api/auth/me': () => ({ status: 200, body: { user: { ...teacher, must_change_password: true } } }),
     })
     const user = userEvent.setup()
@@ -140,7 +158,7 @@ describe('бір реттік пароль', () => {
 
 describe('тіл', () => {
   it('ауыстырғыш интерфейсті орысша мен қытайшаға ауыстырады және есте сақтайды', async () => {
-    mockServer({ 'GET /api/auth/me': () => ({ status: 401 }) })
+    mockServer({ ...home, 'GET /api/auth/me': () => ({ status: 401 }) })
     const user = userEvent.setup()
     renderApp()
 
@@ -154,7 +172,7 @@ describe('тіл', () => {
   })
 
   it('кірген пайдаланушының тілі серверде сақталған мәнге ауысады', async () => {
-    mockServer({ 'GET /api/auth/me': () => ({ status: 200, body: { user: { ...teacher, locale: 'ru' } } }) })
+    mockServer({ ...home, 'GET /api/auth/me': () => ({ status: 200, body: { user: { ...teacher, locale: 'ru' } } }) })
     renderApp()
 
     expect(await screen.findByRole('heading', { name: 'Здравствуйте, Сынақ Мұғалім!' })).toBeInTheDocument()

@@ -22,7 +22,13 @@ class TeacherController extends Controller
     {
         $users = KazakhSort::sort(User::query()->get(), static fn (User $u): array => [$u->full_name]);
 
-        return response()->json(['users' => array_map($this->present(...), $users)]);
+        // Жетекші сыныптары бір сұраныспен алынады: әр аккаунтқа бөлек сұраныс 130 мұғалімде тым қымбат.
+        $homerooms = User::homeroomNamesByUser();
+
+        return response()->json(['users' => array_map(
+            fn (User $u): array => $this->present($u, $homerooms[$u->id] ?? []),
+            $users,
+        )]);
     }
 
     public function store(Request $request): JsonResponse
@@ -116,7 +122,8 @@ class TeacherController extends Controller
     }
 
     /** @return array<string, mixed> */
-    private function present(User $user): array
+    /** @param  list<string>|null  $homerooms  алдын ала есептелген жетекші сыныптары; null болса осы жерде сұралады */
+    private function present(User $user, ?array $homerooms = null): array
     {
         return [
             'id' => $user->id,
@@ -125,7 +132,7 @@ class TeacherController extends Controller
             'role' => $user->role->value,
             'is_active' => $user->is_active,
             'must_change_password' => $user->must_change_password,
-            'homeroom_classes' => $user->homeroomClassNames(),
+            'homeroom_classes' => $homerooms ?? $user->homeroomClassNames(),
         ];
     }
 }

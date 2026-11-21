@@ -250,7 +250,7 @@ describe('күнтізбе мен баптау', () => {
 
 describe('рөлдер', () => {
   it('мұғалімге әкімші беттері ашылмайды, сұраныс та жіберілмейді', async () => {
-    const calls = renderAt('/admin/users', teacher, {})
+    const calls = renderAt('/admin/users', teacher, { 'GET /api/teacher/homeroom': ok({ date: '2026-11-20', classes: [] }) })
     expect(await screen.findByRole('heading', { name: 'Сәлеметсіз бе, Сынақ Мұғалім!' })).toBeInTheDocument()
     expect(calls.some((c) => c.key.includes('/api/admin/'))).toBe(false)
   })

@@ -51,16 +51,45 @@ class User extends Authenticatable
      */
     public function homeroomClassNames(): array
     {
+        return array_map(static fn (SchoolClass $class): string => $class->name(), $this->homeroomClasses());
+    }
+
+    /**
+     * Осы адам жетекшісі болып тұрған, ағымдағы оқу жылындағы ашық сыныптар; нөмірі мен литера ретімен.
+     *
+     * @return list<SchoolClass>
+     */
+    public function homeroomClasses(): array
+    {
         $classes = SchoolClass::query()
+            ->with('homeroom')
             ->where('homeroom_user_id', $this->id)
             ->where('is_active', true)
             ->whereHas('academicYear', fn ($q) => $q->where('is_current', true))
             ->get();
 
-        return array_map(
-            static fn (SchoolClass $class): string => $class->name(),
-            KazakhSort::sort($classes, static fn (SchoolClass $c): array => [sprintf('%02d', $c->grade), $c->letter]),
-        );
+        return KazakhSort::sort($classes, static fn (SchoolClass $c): array => [sprintf('%02d', $c->grade), $c->letter]);
+    }
+
+    /**
+     * Барлық жетекшінің сыныптары бір сұраныспен (тізім беттері үшін): [user_id => ['5А', '7Ә']].
+     *
+     * @return array<int, list<string>>
+     */
+    public static function homeroomNamesByUser(): array
+    {
+        $classes = SchoolClass::query()
+            ->whereNotNull('homeroom_user_id')
+            ->where('is_active', true)
+            ->whereHas('academicYear', fn ($q) => $q->where('is_current', true))
+            ->get();
+
+        $names = [];
+        foreach (KazakhSort::sort($classes, static fn (SchoolClass $c): array => [sprintf('%02d', $c->grade), $c->letter]) as $class) {
+            $names[$class->homeroom_user_id][] = $class->name();
+        }
+
+        return $names;
     }
 
     public static function normalizeLogin(string $login): string

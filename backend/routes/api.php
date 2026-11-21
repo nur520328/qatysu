@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\TeacherController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Teacher\HomeroomController;
 use Illuminate\Support\Facades\Route;
 
 // Келісім: docs/api.md. Алдымен құжат өзгереді, содан кейін осы файл.
@@ -56,6 +57,6 @@ Route::middleware(['auth:sanctum', 'account'])->group(function () {
     });
 
     Route::middleware('role:admin,teacher')->prefix('teacher')->group(function () {
-        //
+        Route::get('homeroom', [HomeroomController::class, 'index']);
     });
 });

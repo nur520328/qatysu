@@ -48,13 +48,9 @@
   },
   "home": {
     "greeting": "您好，{{name}}！",
-    "role": {
-      "admin": "管理员",
-      "teacher": "教师",
-      "homeroom": "班主任：{{classes}}"
-    },
-    "placeholder": "工作页面将在后续阶段添加。",
-    "logout": "退出"
+    "placeholder": "登记迟到和中途离开的页面将在后续阶段加入。",
+    "logout": "退出",
+    "rosterNote": "名单有误请告知德育副校长：名单只能由副校长修改。"
   },
   "nav": {
     "label": "主菜单",
