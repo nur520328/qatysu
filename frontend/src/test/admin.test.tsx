@@ -62,7 +62,7 @@ describe('сыныптар', () => {
     expect(within(fifth).getByText('Сынақ Жетекші')).toBeInTheDocument()
     expect(within(screen.getByRole('region', { name: '6-сыныптар' })).getByText('жабық')).toBeInTheDocument()
     expect(screen.getByText(/3 сынып, 75 оқушы/)).toBeInTheDocument()
-    expect(within(screen.getByRole('navigation', { name: 'Негізгі мәзір' })).getAllByRole('link')).toHaveLength(4)
+    expect(within(screen.getByRole('navigation', { name: 'Негізгі мәзір' })).getAllByRole('link')).toHaveLength(5)
   })
 
   it('оқу жылы ашылмаған болса, күнтізбеге жол сілтейді', async () => {
@@ -262,7 +262,7 @@ describe('күнтізбе мен баптау', () => {
   })
 
   it('баптау сан түрінде сақталады', async () => {
-    const settings = { max_lessons_per_shift: 7, homeroom_edit_days: 14, pending_reason_days: 3 }
+    const settings = { max_lessons_per_shift: 7, homeroom_edit_days: 14, pending_reason_days: 3, morning_shift_end: 790, afternoon_shift_end: 1120 }
     const calls = renderAt('/admin/settings', admin, {
       'GET /api/admin/settings': ok({ settings }),
       'PATCH /api/admin/settings': ok({ settings }),
@@ -281,7 +281,7 @@ describe('күнтізбе мен баптау', () => {
 
 describe('сақтық көшірме', () => {
   const backup = { name: 'qatysu-20261120-023000.sql.gz', size: 22388, created_at: '2026-11-19T21:30:00+00:00', version: '0.0.3.7', tables: 14, rows: 2649 }
-  const settings = { max_lessons_per_shift: 7, homeroom_edit_days: 14, pending_reason_days: 3 }
+  const settings = { max_lessons_per_shift: 7, homeroom_edit_days: 14, pending_reason_days: 3, morning_shift_end: 790, afternoon_shift_end: 1120 }
 
   it('баптау бетінде соңғы көшірме Қазақстан уақытымен көрінеді, қолмен жасауға және жүктеуге болады', async () => {
     const calls = renderAt('/admin/settings', admin, {

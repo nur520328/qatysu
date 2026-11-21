@@ -28,9 +28,9 @@ class Setting extends Model
         'homeroom_edit_days' => ['default' => 14, 'min' => 0, 'max' => 90],
         // Анықталмаған себеп неше оқу күнінен кейін есепте бөлек көрсетіледі.
         'pending_reason_days' => ['default' => 3, 'min' => 1, 'max' => 30],
-        // Смена соңы, түн ортасынан бастап минутпен (840 = 14:00). Кезекші коды осы уақытта жарамсыз болады.
-        'morning_shift_end' => ['default' => 840, 'min' => 600, 'max' => 1020],
-        'afternoon_shift_end' => ['default' => 1200, 'min' => 780, 'max' => 1380],
+        // Смена соңы, түн ортасынан бастап минутпен (790 = 13:10; мектептің кестесі: 13:10 және 18:40). Кезекші коды осы уақытта жарамсыз болады.
+        'morning_shift_end' => ['default' => 790, 'min' => 600, 'max' => 1020],
+        'afternoon_shift_end' => ['default' => 1120, 'min' => 780, 'max' => 1380],
     ];
 
     public static function int(string $key): int

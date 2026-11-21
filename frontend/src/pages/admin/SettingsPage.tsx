@@ -28,6 +28,21 @@ export function SettingsPage() {
   return <SettingsForm initial={data} />
 }
 
+const TIMES: { key: 'morning_shift_end' | 'afternoon_shift_end'; label: string }[] = [
+  { key: 'morning_shift_end', label: 'morningEnd' },
+  { key: 'afternoon_shift_end', label: 'afternoonEnd' },
+]
+
+/** Серверде уақыт түн ортасынан бастап минутпен сақталады (790 = 13:10). */
+function toClock(minutes: number): string {
+  return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
+}
+
+function toMinutes(clock: string): number {
+  const [h, m] = clock.split(':').map(Number)
+  return h * 60 + m
+}
+
 function SettingsForm({ initial }: { initial: Settings }) {
   const { t } = useTranslation()
   const errorText = useErrorText()
@@ -35,10 +50,17 @@ function SettingsForm({ initial }: { initial: Settings }) {
     max_lessons_per_shift: String(initial.max_lessons_per_shift),
     homeroom_edit_days: String(initial.homeroom_edit_days),
     pending_reason_days: String(initial.pending_reason_days),
+    morning_shift_end: toClock(initial.morning_shift_end),
+    afternoon_shift_end: toClock(initial.afternoon_shift_end),
   })
   const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  function change(key: keyof Settings, value: string) {
+    setSaved(false)
+    setValues({ ...values, [key]: value })
+  }
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
@@ -50,6 +72,8 @@ function SettingsForm({ initial }: { initial: Settings }) {
         max_lessons_per_shift: Number(values.max_lessons_per_shift),
         homeroom_edit_days: Number(values.homeroom_edit_days),
         pending_reason_days: Number(values.pending_reason_days),
+        morning_shift_end: toMinutes(values.morning_shift_end),
+        afternoon_shift_end: toMinutes(values.afternoon_shift_end),
       })
       setSaved(true)
     } catch (caught) {
@@ -63,12 +87,22 @@ function SettingsForm({ initial }: { initial: Settings }) {
     <section className="page">
       <h1 className="page__title">{t('settings.title')}</h1>
       <form className="panel form" onSubmit={onSubmit}>
+        <div className="row">
+          {TIMES.map(({ key, label }) => (
+            <label key={key} className="field">
+              <span className="field__label">{t(`settingsTime.${label}`)}</span>
+              <input className="field__input field__input--num" type="time" required value={values[key]}
+                onChange={(e) => change(key, e.target.value)} />
+            </label>
+          ))}
+        </div>
+        <p className="field__hint">{t('settingsTime.hint')}</p>
         {FIELDS.map(({ key, label, min, max }) => (
           <label key={key} className="field">
             <span className="field__label">{t(`settings.${label}`)}</span>
             <input className="field__input field__input--num" type="number" inputMode="numeric" required
               min={min} max={max} step={1} value={values[key]}
-              onChange={(e) => { setSaved(false); setValues({ ...values, [key]: e.target.value }) }} />
+              onChange={(e) => change(key, e.target.value)} />
             <span className="field__hint">{t(`settings.${label}Hint`)} {t('settings.range', { min, max })}</span>
           </label>
         ))}

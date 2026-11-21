@@ -63,3 +63,8 @@ export function dayMonthTime(iso: string, language: string): string {
   const local = new Date(new Date(iso).getTime() + 5 * 3600 * 1000).toISOString()
   return `${dayMonth(local.slice(0, 10), language)}, ${local.slice(11, 16)}`
 }
+
+/** Серверден келген уақыттың сағаты мен минуты, Қазақстан уақытымен: «13:10». */
+export function clockTime(iso: string): string {
+  return new Date(new Date(iso).getTime() + 5 * 3600 * 1000).toISOString().slice(11, 16)
+}

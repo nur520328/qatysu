@@ -97,6 +97,34 @@ upload -F "file=@$WORK/mugalimder.xlsx" --form-string "digest=$D" "$BASE/api/adm
 curl -s -b "$JAR" -H 'Accept: application/json' -H "Origin: $BASE" "$BASE/api/admin/classes" | grep -q '"student_count":2' || fail "сыныпта оқушы саны қате"
 [ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/templates/mugalimder-ulgi.xlsx")" = 200 ] || fail "мұғалімдер үлгі файлы берілмеді"
 
+echo "== Кезекші: код беру, кодпен кіру, сыныпты белгілеу"
+# Тексеріс кез келген күні, кез келген сағатта жүруі үшін: бүгін оқу күні, түстен кейінгі смена 23:00-ге дейін.
+if [ "$(TZ=Asia/Almaty date +%H)" -lt 22 ]; then
+  TODAY="$(TZ=Asia/Almaty date +%F)"
+  YEAR_ID="$(mariadb -uroot -N qatysu_smoke -e "select id from academic_years limit 1")"
+  [ "$(json PUT "/api/admin/academic-years/$YEAR_ID/calendar" "{\"from\":\"$TODAY\",\"to\":\"$TODAY\",\"is_school_day\":true,\"note\":null}")" = 200 ] || fail "күнтізбе өзгермеді"
+  [ "$(json PATCH /api/admin/settings '{"afternoon_shift_end":1380}')" = 200 ] || fail "смена соңы сақталмады"
+  DUTY_CODE="$(curl -s -b "$JAR" -c "$JAR" -H 'Accept: application/json' -H 'Content-Type: application/json' -H "Origin: $BASE" -H "X-XSRF-TOKEN: $(xsrf)" -d "{\"date\":\"$TODAY\",\"shift\":\"afternoon\"}" "$BASE/api/admin/duty-codes" | python3 -c "import json,sys; print(json.load(sys.stdin)['code'])")" || fail "код берілмеді"
+  curl -s -b "$JAR" -H 'Accept: application/json' -H "Origin: $BASE" "$BASE/api/admin/duty-codes" | grep -q "\"code\":\"$DUTY_CODE\"" || fail "завуч кодты қайта көре алмады"
+  mariadb -uroot -N qatysu_smoke -e "select coalesce(code_encrypted,'') from duty_codes" | grep -q "$DUTY_CODE" && fail "код дерекқорда ашық мәтінмен жатыр" || true
+  # Планшет: бөлек браузер (бөлек cookie).
+  TAB="$WORK/tablet.txt"
+  tab() { curl -s -o "$WORK/tab.json" -w '%{http_code}' -b "$TAB" -c "$TAB" -H 'Accept: application/json' -H 'Content-Type: application/json' -H "Origin: $BASE" "$@"; }
+  txsrf() { python3 -c "import urllib.parse; [print(urllib.parse.unquote(l.split('\t')[6].strip())) for l in open('$TAB') if 'XSRF-TOKEN' in l]"; }
+  tab "$BASE/sanctum/csrf-cookie" >/dev/null
+  [ "$(tab -X POST -H "X-XSRF-TOKEN: $(txsrf)" -d '{"code":"000000"}' "$BASE/api/duty/login")" = 422 ] || fail "қате код қабылданды"
+  [ "$(tab -X POST -H "X-XSRF-TOKEN: $(txsrf)" -d "{\"code\":\"$DUTY_CODE\"}" "$BASE/api/duty/login")" = 200 ] || fail "кодпен кіру сәтсіз"
+  CLASS_ID="$(python3 -c "import json; print(json.load(open('$WORK/tab.json'))['classes'][-1]['id'])")"
+  [ "$(tab "$BASE/api/duty/classes/$CLASS_ID")" = 200 ] || fail "сынып тізімі ашылмады"
+  STUDENT_ID="$(python3 -c "import json; print(json.load(open('$WORK/tab.json'))['students'][0]['id'])")"
+  [ "$(tab -X PUT -H "X-XSRF-TOKEN: $(txsrf)" -d "{\"client_uuid\":\"11111111-1111-4111-8111-111111111111\",\"absent_student_ids\":[$STUDENT_ID]}" "$BASE/api/duty/classes/$CLASS_ID/round")" = 200 ] || fail "аралау сақталмады"
+  grep -q '"absent_count":1' "$WORK/tab.json" || fail "аралау нәтижесі қате"
+  [ "$(tab "$BASE/api/admin/classes")" = 401 ] || fail "кезекшіге әкімші API ашық"
+  [ "$(mariadb -uroot -N qatysu_smoke -e "select count(*) from attendance_records")" = 2 ] || fail "қатысу жазбаларының саны қате"
+else
+  echo "   (22:00-ден кейін: кезекші тексерісі өткізілмеді, смена уақыты жетпейді)"
+fi
+
 echo "== Сақтық көшірме: жасау, жүктеу, қалпына келтіру, кесте"
 php artisan qatysu:backup | grep -q "КӨШІРМЕ ЖАСАЛДЫ" || fail "көшірме жасалмады"
 BACKUP="$(curl -s -b "$JAR" -H 'Accept: application/json' -H "Origin: $BASE" "$BASE/api/admin/backups" | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['stale'] is False; print(d['backups'][0]['name'])")" || fail "көшірмелер тізімі қате"

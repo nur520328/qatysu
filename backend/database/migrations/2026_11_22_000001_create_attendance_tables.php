@@ -13,8 +13,10 @@ return new class extends Migration
             $table->id();
             $table->date('date');
             $table->string('shift', 16);
-            // Код ашық түрде сақталмайды; завучқа берілген сәтте бір рет көрсетіледі.
             $table->string('code_hash');
+            // Завуч кодты күні бойы қайта көре алуы үшін (тапсырыс берушінің шешімі, 2026-11-21) код
+            // қосымша кілтімен шифрланып сақталады. Смена біткенде не код жойылғанда бұл өріс тазаланады.
+            $table->text('code_encrypted')->nullable();
             $table->foreignId('issued_by')->constrained('users');
             $table->dateTime('expires_at');
             $table->dateTime('revoked_at')->nullable();

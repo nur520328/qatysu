@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/context'
@@ -79,6 +80,7 @@ export function LoginPage() {
         <button className="btn btn--primary" type="submit" disabled={busy || loginName.trim() === '' || password === ''}>
           {busy ? t('login.submitting') : t('login.submit')}
         </button>
+        <Link className="back" to="/kezekshi">{t('duty.entryLink')}</Link>
       </form>
     </Shell>
   )

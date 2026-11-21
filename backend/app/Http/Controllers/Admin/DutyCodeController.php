@@ -51,7 +51,6 @@ class DutyCodeController extends Controller
             return $this->error($e->getMessage());
         }
 
-        // Ашық код тек осы жауапта болады; дерекқорда хеші ғана сақталады.
         return response()->json(['code' => $plain, 'shift' => $this->shift($date, $shift)], 201);
     }
 
@@ -77,6 +76,7 @@ class DutyCodeController extends Controller
             'classes_done' => AttendanceRound::query()->whereIn('class_id', $classIds)->whereDate('date', $date->toDateString())->count(),
             'code' => $code === null ? null : [
                 'id' => $code->id,
+                'code' => $code->visibleCode(),
                 'issued_at' => $code->created_at->toIso8601String(),
                 'issued_by' => $code->issuer->full_name,
                 'devices' => $code->sessions()->count(),

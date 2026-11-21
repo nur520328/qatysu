@@ -87,7 +87,10 @@ export interface TeacherImportResult {
   credentials: Credential[] | null
 }
 
-export type Settings = Record<'max_lessons_per_shift' | 'homeroom_edit_days' | 'pending_reason_days', number>
+export type Settings = Record<
+  'max_lessons_per_shift' | 'homeroom_edit_days' | 'pending_reason_days' | 'morning_shift_end' | 'afternoon_shift_end',
+  number
+>
 
 export interface StudentNames {
   last_name: string
@@ -117,7 +120,26 @@ export interface BackupList {
   backups: Backup[]
 }
 
+export interface DutyShift {
+  shift: Shift
+  ends_at: string
+  ended: boolean
+  classes_total: number
+  classes_done: number
+  code: null | { id: number; code: string | null; issued_at: string; issued_by: string; devices: number }
+}
+
+export interface DutyDay {
+  date: string
+  is_today: boolean
+  shifts: DutyShift[]
+}
+
 export const adminApi = {
+  dutyCodes: () => request<{ days: DutyDay[]; login_blocked: boolean }>('GET', '/admin/duty-codes'),
+  issueDutyCode: (date: string, shift: Shift) => request<{ code: string; shift: DutyShift }>('POST', '/admin/duty-codes', { date, shift }),
+  revokeDutyCode: (id: number) => request<{ shift: DutyShift }>('DELETE', `/admin/duty-codes/${id}`),
+
   backups: () => request<BackupList>('GET', '/admin/backups'),
   createBackup: () => request<{ backup: Backup }>('POST', '/admin/backups'),
   backupUrl: (name: string) => `/api/admin/backups/${encodeURIComponent(name)}/download`,

@@ -4,6 +4,8 @@ import { useAuth } from './auth/context'
 import { ChangePasswordPage } from './pages/ChangePasswordPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
+import { DutyApp } from './pages/duty/DutyApp'
+import { DutyPage } from './pages/admin/DutyPage'
 import { AdminLayout } from './pages/admin/AdminLayout'
 import { CalendarPage } from './pages/admin/CalendarPage'
 import { ClassPage } from './pages/admin/ClassPage'
@@ -24,7 +26,15 @@ export function App() {
       </p>
     )
   }
-  if (state.status === 'guest') return <LoginPage />
+  if (state.status === 'guest') {
+    // Кезекші оқушының аккаунты жоқ: ол бөлек мекенжайда күндік кодпен кіреді.
+    return (
+      <Routes>
+        <Route path="/kezekshi" element={<DutyApp />} />
+        <Route path="*" element={<LoginPage />} />
+      </Routes>
+    )
+  }
   // Бір реттік парольмен кірген адам оны ауыстырмайынша басқа бетке өте алмайды.
   if (state.user.must_change_password) return <ChangePasswordPage />
 
@@ -45,6 +55,7 @@ export function App() {
         <Route path="classes/:id" element={<ClassPage />} />
         <Route path="import/students" element={<ImportStudentsPage />} />
         <Route path="import/teachers" element={<ImportTeachersPage />} />
+        <Route path="duty" element={<DutyPage />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="settings" element={<SettingsPage />} />

@@ -741,3 +741,187 @@ select.field__input {
   min-height: 44px;
   padding-right: 0.875rem;
 }
+
+/* ---- Кезекші (планшет) ---- */
+
+.field__input--code {
+  max-width: 14rem;
+  height: 64px;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.35em;
+  text-align: center;
+}
+
+.field__input--num[type='time'] {
+  max-width: 9rem;
+}
+
+.duty-progress {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.duty-progress--done {
+  color: #136f3a;
+}
+
+.tiles--duty {
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+}
+
+button.tile {
+  width: 100%;
+  min-height: 92px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tile--todo {
+  border-width: 2px;
+  border-color: var(--accent);
+}
+
+.tile--done {
+  border-color: #9bd0b0;
+  background: #eaf6ee;
+}
+
+.tile--done .tile__line:not(.tile__line--small) {
+  color: #136f3a;
+  font-weight: 600;
+}
+
+.page--duty {
+  padding-bottom: 6.5rem;
+}
+
+.marks {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Планшетте тізім бағандарға бөлінеді (реті жоғарыдан төмен, журналдағыдай): тігінен ұстағанда екі,
+   көлденең ұстағанда үш баған. Сонда 26–27 оқушы айналдырусыз сыяды. */
+@media (min-width: 700px) {
+  .marks {
+    grid-template-columns: 1fr 1fr;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(var(--rows2, 14), auto);
+  }
+}
+
+@media (min-width: 1100px) {
+  .marks {
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: repeat(var(--rows3, 9), auto);
+  }
+}
+
+.mark {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 52px;
+  padding: 0.375rem 0.875rem;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mark__no {
+  flex: none;
+  width: 1.75rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.mark__name {
+  flex: 1;
+  font-size: 1.125rem;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.mark__state {
+  flex: none;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #136f3a;
+}
+
+.mark--absent {
+  border: 2px solid var(--danger-line);
+  background: var(--danger-ground);
+}
+
+.mark--absent .mark__state,
+.mark--absent .mark__name {
+  color: var(--danger-ink);
+  font-weight: 700;
+}
+
+.mark:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+
+.mark:disabled .mark__state {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.savebar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+
+.savebar__sum {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.savebar__btn {
+  min-width: 12rem;
+  min-height: 56px;
+  font-size: 1.125rem;
+}
+
+/* ---- Завуч: кезекші коды ---- */
+
+.shifts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 1rem;
+}
+
+.code {
+  margin: 0;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 3rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+  user-select: all;
+}

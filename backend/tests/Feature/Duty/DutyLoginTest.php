@@ -21,7 +21,7 @@ class DutyLoginTest extends DutyTestCase
         $response = $this->postJson('/api/duty/login', ['code' => $this->issue()])->assertOk();
 
         $response->assertJsonPath('date', '2026-11-20')->assertJsonPath('shift', 'morning')
-            ->assertJsonPath('expires_at', '2026-11-20T14:00:00+05:00')->assertJsonPath('device_number', 1);
+            ->assertJsonPath('expires_at', '2026-11-20T13:10:00+05:00')->assertJsonPath('device_number', 1);
         $this->assertSame(['5А', '5Ә', '11А'], array_column($response->json('classes'), 'name'));
         $response->assertJsonPath('classes.1.student_count', 2)->assertJsonPath('classes.1.round', null);
     }
@@ -83,7 +83,7 @@ class DutyLoginTest extends DutyTestCase
         $this->dutyLogin($today);
         $this->getJson('/api/duty/session')->assertOk();
 
-        $this->travelTo(CarbonImmutable::create(2026, 11, 20, 14, 0, 1));
+        $this->travelTo(CarbonImmutable::create(2026, 11, 20, 13, 10, 1));
         $this->app['auth']->forgetGuards();
         $this->getJson('/api/duty/session')->assertUnauthorized()->assertJsonPath('code', 'duty_code_ended');
         $this->postJson('/api/duty/login', ['code' => $today])->assertStatus(422);

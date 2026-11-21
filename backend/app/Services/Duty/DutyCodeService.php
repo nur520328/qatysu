@@ -64,7 +64,7 @@ class DutyCodeService
             }
             $plain = str_pad((string) random_int(0, 999_999), 6, '0', STR_PAD_LEFT);
             $code = DutyCode::query()->create([
-                'date' => $date, 'shift' => $shift, 'code_hash' => Hash::make($plain),
+                'date' => $date, 'shift' => $shift, 'code_hash' => Hash::make($plain), 'code_encrypted' => $plain,
                 'issued_by' => $admin->id, 'expires_at' => $expiresAt,
             ]);
 
@@ -76,9 +76,15 @@ class DutyCodeService
     public function revoke(DutyCode $code): void
     {
         if ($code->revoked_at === null) {
-            $code->update(['revoked_at' => now()]);
+            $code->update(['revoked_at' => now(), 'code_encrypted' => null]);
             DutySession::query()->where('duty_code_id', $code->id)->whereNull('ended_at')->update(['ended_at' => now()]);
         }
+    }
+
+    /** Мерзімі өткен кодтардың шифрланған көшірмесін тазалайды (түнде жоспарлаушыдан). */
+    public function forgetExpired(): int
+    {
+        return DutyCode::query()->whereNotNull('code_encrypted')->where('expires_at', '<=', now())->update(['code_encrypted' => null]);
     }
 
     public function active(CarbonImmutable $date, Shift $shift): ?DutyCode

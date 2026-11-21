@@ -16,19 +16,20 @@ use Illuminate\Support\Carbon;
  * @property Carbon $date
  * @property Shift $shift
  * @property string $code_hash
+ * @property string|null $code_encrypted
  * @property int $issued_by
  * @property Carbon $expires_at
  * @property Carbon|null $revoked_at
  * @property Carbon $created_at
  * @property-read User $issuer
  */
-#[Fillable(['date', 'shift', 'code_hash', 'issued_by', 'expires_at', 'revoked_at'])]
+#[Fillable(['date', 'shift', 'code_hash', 'code_encrypted', 'issued_by', 'expires_at', 'revoked_at'])]
 class DutyCode extends Model
 {
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['date' => 'date', 'shift' => Shift::class, 'expires_at' => 'datetime', 'revoked_at' => 'datetime'];
+        return ['date' => 'date', 'shift' => Shift::class, 'code_encrypted' => 'encrypted', 'expires_at' => 'datetime', 'revoked_at' => 'datetime'];
     }
 
     /** @return BelongsTo<User, $this> */
@@ -41,6 +42,12 @@ class DutyCode extends Model
     public function sessions(): HasMany
     {
         return $this->hasMany(DutySession::class);
+    }
+
+    /** Завучқа көрсетілетін ашық код: тек код әлі жарамды болуы мүмкін кезде (жойылмаған, мерзімі өтпеген). */
+    public function visibleCode(): ?string
+    {
+        return $this->revoked_at === null && $this->expires_at->isFuture() ? $this->code_encrypted : null;
     }
 
     /** Код дәл қазір кіруге және белгілеуге жарай ма. */

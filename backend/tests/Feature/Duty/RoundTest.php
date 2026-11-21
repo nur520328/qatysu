@@ -183,7 +183,7 @@ class RoundTest extends DutyTestCase
         $uuid = $this->uuid();
         $this->save(['Сынақов'], $uuid)->assertOk();
 
-        $this->travelTo(CarbonImmutable::create(2026, 11, 20, 14, 0, 1));
+        $this->travelTo(CarbonImmutable::create(2026, 11, 20, 13, 10, 1));
         $this->app['auth']->forgetGuards();
         $this->save([], $uuid, 1)->assertUnauthorized()->assertJsonPath('code', 'duty_code_ended');
         $this->assertSame(1, AttendanceRecord::query()->where('round_status', 'absent')->count());
