@@ -302,6 +302,7 @@ body {
 }
 
 .form > .row,
+.form > .shifts,
 .form > .field,
 .form > .alert,
 .form > .note {
@@ -924,4 +925,75 @@ button.tile {
   letter-spacing: 0.08em;
   line-height: 1.1;
   user-select: all;
+}
+
+/* Серверге жіберу күйі: кезекші деректің қайда екенін әрқашан көруі тиіс. */
+.syncbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.syncbar--ok {
+  border-color: #9bd0b0;
+  background: #eaf6ee;
+  color: #136f3a;
+}
+
+.syncbar--warn {
+  border: 2px solid var(--danger-line);
+  background: var(--danger-ground);
+  color: var(--danger-ink);
+}
+
+.syncbar__main {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.syncbar__hint {
+  margin: 0.125rem 0 0;
+  font-weight: 500;
+}
+
+.tile--flag {
+  border: 2px solid var(--danger-line);
+  background: var(--danger-ground);
+}
+
+.tile--flag .tile__line--small {
+  color: var(--danger-ink);
+  font-weight: 700;
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.875rem;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+}
+
+.side__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.side__list {
+  margin: 0;
+  padding-left: 1.25rem;
+  line-height: 1.6;
 }

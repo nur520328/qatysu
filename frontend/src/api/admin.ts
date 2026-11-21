@@ -135,7 +135,24 @@ export interface DutyDay {
   shifts: DutyShift[]
 }
 
+export interface ConflictSide {
+  device_number: number | null
+  absent: { id: number; name: string }[]
+}
+
+export interface RoundConflict {
+  id: number
+  class: { id: number; name: string }
+  date: string
+  student_count: number
+  current: ConflictSide & { saved_at: string }
+  incoming: ConflictSide & { marked_at: string | null; received_at: string }
+}
+
 export const adminApi = {
+  roundConflicts: () => request<{ conflicts: RoundConflict[] }>('GET', '/admin/round-conflicts').then((r) => r.conflicts),
+  resolveConflict: (id: number, resolution: 'keep' | 'replace') =>
+    request<{ conflicts: RoundConflict[] }>('POST', `/admin/round-conflicts/${id}/resolve`, { resolution }).then((r) => r.conflicts),
   dutyCodes: () => request<{ days: DutyDay[]; login_blocked: boolean }>('GET', '/admin/duty-codes'),
   issueDutyCode: (date: string, shift: Shift) => request<{ code: string; shift: DutyShift }>('POST', '/admin/duty-codes', { date, shift }),
   revokeDutyCode: (id: number) => request<{ shift: DutyShift }>('DELETE', `/admin/duty-codes/${id}`),

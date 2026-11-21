@@ -54,7 +54,8 @@ class RoundController extends Controller
 
         // Смена біткен соң тек смена кезінде белгіленген (планшеттің уақыты бойынша) дерек қабылданады.
         // Планшет интерфейсі смена соңында белгілеуді жабады; бұл тексеріс соны серверде қайталайды.
-        $clientTime = isset($data['client_time']) ? CarbonImmutable::parse($data['client_time']) : null;
+        // Планшет уақытты UTC-мен жібереді; дерекқорға мектептің уақыт белдеуінде жазылуы тиіс, әйтпесе 5 сағатқа жылжиды.
+        $clientTime = isset($data['client_time']) ? CarbonImmutable::parse($data['client_time'])->setTimezone(config('app.timezone')) : null;
         if ($session->code->expires_at->isPast() && ($clientTime === null || $clientTime->gt($session->code->expires_at))) {
             return $this->error('duty_code_ended', 401);
         }

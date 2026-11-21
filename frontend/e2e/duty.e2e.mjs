@@ -89,7 +89,8 @@ try {
       await tablet.setViewportSize({ width: 1280, height: 800 })
     }
     await tablet.getByRole('button', { name: 'Сақтау' }).click()
-    await tablet.getByText(`${name} сақталды.`).waitFor()
+    await tablet.getByText(`${name} планшетте сақталды.`).waitFor()
+    await tablet.getByText("Барлық белгі серверге жетті.").waitFor()
   }
   const perClass = Math.round((Date.now() - started) / names.length)
   await tablet.getByText('Аралынды: 19 / 19 сынып').waitFor()
@@ -103,7 +104,7 @@ try {
   const wrongName = await wrong.locator('.mark__name').textContent()
   await wrong.click()
   await tablet.getByRole('button', { name: 'Сақтау' }).click()
-  await tablet.getByText(`${names[1]} сақталды.`).waitFor()
+  await tablet.getByText(`${names[1]} планшетте сақталды.`).waitFor()
   await tablet.getByRole('button', { name: new RegExp(`^${names[1]}.*бәрі бар`) }).waitFor()
   step(`түзету сақталды: ${names[1]} сыныбында «${wrongName}» қайта «бар» болды`)
 

@@ -1,3 +1,5 @@
+import 'fake-indexeddb/auto'
+import { IDBFactory } from 'fake-indexeddb'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
@@ -6,6 +8,7 @@ import type { DutyState, Roster } from '../api/duty'
 import type { User } from '../api/client'
 import { App } from '../App'
 import { AuthProvider } from '../auth/AuthContext'
+import { dutyDb } from '../duty/db'
 import { setLocale } from '../i18n'
 import { mockServer } from './mockServer'
 import type { Handler } from './mockServer'
@@ -15,7 +18,7 @@ const ok = (body: unknown): Handler => () => ({ status: 200, body })
 const guest: Handler = () => ({ status: 401, body: { code: 'unauthenticated' } })
 const noDuty: Handler = () => ({ status: 401, body: { code: 'duty_unauthenticated' } })
 
-const round = { client_uuid: '11111111-1111-4111-8111-111111111111', revision: 2, absent_count: 1, saved_at: '2026-11-20T03:15:00+00:00' }
+const round = { client_uuid: '11111111-1111-4111-8111-111111111111', revision: 2, absent_count: 1, saved_at: '2026-11-20T03:15:00+00:00', received_late: false }
 
 function state(overrides: Partial<DutyState> = {}): DutyState {
   return {
@@ -54,8 +57,23 @@ function renderDuty(routes: Record<string, Handler>, path = '/kezekshi') {
   return calls
 }
 
-beforeEach(() => setLocale('kk'))
+beforeEach(() => {
+  setLocale('kk')
+  globalThis.indexedDB = new IDBFactory()
+})
 afterEach(() => vi.restoreAllMocks())
+
+/** Сервердегі тізімдер: 5А аралынбаған, 5Ә-де бір оқушы жоқ, 9А түгел бар. */
+function rosters(): Roster[] {
+  return [
+    roster(),
+    roster({ class: { id: 12, name: '5Ә' }, round, students: roster().students.map((s) => ({ ...s, id: s.id + 20, status: s.id === 2 ? ('absent' as const) : s.status })) }),
+    roster({ class: { id: 91, name: '9А' }, round: { ...round, absent_count: 0 }, students: roster().students.map((s) => ({ ...s, id: s.id + 90 })) }),
+  ]
+}
+
+const base = (): Record<string, Handler> => ({ 'GET /api/duty/session': ok(state()), 'GET /api/duty/rosters': ok({ rosters: rosters() }) })
+const savedAs = (data: Roster, stored: 'round' | 'conflict' = 'round'): Handler => ok({ ...data, stored_as: stored, kept_locked: [] })
 
 describe('кезекшінің кіруі', () => {
   it('кіру бетінен кезекші бетіне сілтеме бар', async () => {
@@ -67,6 +85,7 @@ describe('кезекшінің кіруі', () => {
     let attempts = 0
     const calls = renderDuty({
       'GET /api/duty/session': noDuty,
+      'GET /api/duty/rosters': ok({ rosters: rosters() }),
       'POST /api/duty/login': () => (++attempts === 1 ? { status: 422, body: { code: 'invalid_duty_code' } } : { status: 200, body: state() }),
     })
     const user = userEvent.setup()
@@ -90,21 +109,27 @@ describe('кезекшінің кіруі', () => {
   })
 
   it('бұрын кірген планшет бірден сыныптарды көрсетеді; күйлері ажыратылады', async () => {
-    renderDuty({ 'GET /api/duty/session': ok(state()) })
+    renderDuty(base())
 
     const fifth = await screen.findByRole('region', { name: '5-сыныптар' })
     expect(within(fifth).getByRole('button', { name: /5А.*аралынбаған.*3 оқушы/ })).toBeInTheDocument()
     expect(within(fifth).getByRole('button', { name: /5Ә.*1 оқушы жоқ/ })).toBeInTheDocument()
     expect(within(screen.getByRole('region', { name: '9-сыныптар' })).getByRole('button', { name: /9А.*бәрі бар/ })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Барлық белгі серверге жетті.')
   })
 })
 
 describe('сыныпты белгілеу', () => {
-  it('жоқ оқушы басылады, сақталады, сыныптар бетіне қайтады', async () => {
+  it('жоқ оқушы басылады, сақталады, серверге жетеді', async () => {
     const calls = renderDuty({
-      'GET /api/duty/session': ok(state()),
-      'GET /api/duty/classes/11': ok(roster()),
-      'PUT /api/duty/classes/11/round': ok({ ...roster(), stored_as: 'round', kept_locked: [] }),
+      ...base(),
+      'PUT /api/duty/classes/11/round': (_init, body) => ({
+        status: 200,
+        body: {
+          ...roster({ round: { ...round, client_uuid: (body as { client_uuid: string }).client_uuid, revision: 1 }, students: roster().students.map((s) => (s.id === 2 ? { ...s, status: 'absent' as const } : s)) }),
+          stored_as: 'round', kept_locked: [],
+        },
+      }),
     })
     const user = userEvent.setup()
 
@@ -122,67 +147,64 @@ describe('сыныпты белгілеу', () => {
 
     await user.click(screen.getByRole('button', { name: 'Сақтау' }))
 
-    expect(await screen.findByText('5А сақталды.')).toBeInTheDocument()
+    expect(await screen.findByText('5А планшетте сақталды.')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /5А.*1 оқушы жоқ.*3 оқушы/ })).toBeInTheDocument()
+    expect(screen.getByText('Аралынды: 3 / 3 сынып Барлық сынып аралынды.')).toBeInTheDocument()
     const body = calls.find((c) => c.key === 'PUT /api/duty/classes/11/round')?.body as Record<string, unknown>
     expect(body.absent_student_ids).toEqual([2])
     expect(body.revision).toBeNull()
     expect(body.client_uuid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
   })
 
-  it('сақтаудан кейінгі кешіккен жауап кезекшіні келесі сыныптан шығарып жібермейді', async () => {
-    let release: (() => void) | null = null
-    let sessions = 0
-    mockServer({
-      'GET /api/auth/me': guest,
-      'GET /api/duty/classes/11': ok(roster()),
-      'GET /api/duty/classes/12': ok(roster({ class: { id: 12, name: '5Ә' }, round })),
-      'PUT /api/duty/classes/11/round': ok({ ...roster(), stored_as: 'round', kept_locked: [] }),
+  it('интернет жоқта сақталған сынып планшетте қалады, анық көрсетіледі және кейін жіберіледі', async () => {
+    let offline = true
+    renderDuty({
+      ...base(),
+      'PUT /api/duty/classes/11/round': () => {
+        if (offline) throw new TypeError('offline')
+        return { status: 200, body: { ...roster({ round: { ...round, revision: 1 } }), stored_as: 'round', kept_locked: [] } }
+      },
     })
-    const base = globalThis.fetch
-    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      if (String(input) === '/api/duty/session') {
-        // Сақтаудан кейінгі жаңарту сұранысы баяу желіде кешігеді.
-        if (++sessions === 2) await new Promise<void>((resolve) => { release = resolve })
-        return new Response(JSON.stringify(state()), { status: 200 })
-      }
-      return base(input, init)
-    }))
-    render(
-      <MemoryRouter initialEntries={['/kezekshi']}>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </MemoryRouter>,
-    )
     const user = userEvent.setup()
 
     await user.click(await screen.findByRole('button', { name: /5А/ }))
-    await user.click(await screen.findByRole('button', { name: 'Сақтау' }))
-    await user.click(await screen.findByRole('button', { name: /5Ә/ }))
-    expect(await screen.findByRole('heading', { name: '5Ә сыныбы' })).toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: /Сынақов Екінші/ }))
+    await user.click(screen.getByRole('button', { name: 'Сақтау' }))
 
-    release!()
-    await new Promise((resolve) => setTimeout(resolve, 20))
-    expect(screen.getByRole('heading', { name: '5Ә сыныбы' })).toBeInTheDocument()
+    // Кезекші бірден сыныптарға қайтады: интернетті күтпейді.
+    expect(await screen.findByText('1 сынып серверге жіберілмеді')).toBeInTheDocument()
+    expect(await screen.findByText('Планшетті өшірмеңіз. Интернет шыққанда өзі жіберіледі.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /5А.*1 оқушы жоқ.*жіберілмеген/ })).toBeInTheDocument()
+
+    // Жіберілмеген дерекпен шығуға болмайды.
+    const confirm = vi.spyOn(window, 'confirm')
+    await user.click(screen.getByRole('button', { name: 'Шығу' }))
+    expect(confirm).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent('Жіберілмеген сынып бар.')
+
+    // Қайта ашқанда кезекші өз белгілерін көреді.
+    await user.click(screen.getByRole('button', { name: /5А/ }))
+    expect(await screen.findByRole('button', { name: /Сынақов Екінші/ })).toHaveAttribute('aria-pressed', 'true')
+    await user.click(screen.getByRole('button', { name: 'Сыныптарға қайту' }))
+
+    offline = false
+    await user.click(await screen.findByRole('button', { name: 'Қазір жіберу' }))
+    expect(await screen.findByText('Барлық белгі серверге жетті.')).toBeInTheDocument()
+    expect(screen.queryByText(/серверге жіберілмеді/)).not.toBeInTheDocument()
   })
 
   it('сақталған сынып сол нөмірі және нұсқасымен түзетіледі; мұғалім белгілеген оқушы құлыптаулы', async () => {
-    const saved = roster({
-      round,
-      students: [
-        { id: 1, last_name: 'Әлібеков', first_name: 'Бірінші', patronymic: null, status: 'absent', locked: false },
-        { id: 2, last_name: 'Сынақов', first_name: 'Екінші', patronymic: null, status: 'absent', locked: true },
-        { id: 3, last_name: 'Үлгіев', first_name: 'Үшінші', patronymic: null, status: 'present', locked: false },
-      ],
-    })
+    const list = rosters()
+    list[1].students[0] = { ...list[1].students[0], status: 'absent' }
+    list[1].students[1] = { ...list[1].students[1], locked: true }
     const calls = renderDuty({
       'GET /api/duty/session': ok(state()),
-      'GET /api/duty/classes/11': ok(saved),
-      'PUT /api/duty/classes/11/round': ok({ ...saved, stored_as: 'round', kept_locked: [] }),
+      'GET /api/duty/rosters': ok({ rosters: list }),
+      'PUT /api/duty/classes/12/round': savedAs({ ...list[1], round: { ...round, revision: 3 } }),
     })
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('button', { name: /5А/ }))
+    await user.click(await screen.findByRole('button', { name: /5Ә/ }))
     const locked = await screen.findByRole('button', { name: /Сынақов Екінші/ })
     expect(locked).toBeDisabled()
     expect(locked).toHaveTextContent('мұғалім белгілеген')
@@ -190,48 +212,41 @@ describe('сыныпты белгілеу', () => {
     await user.click(screen.getByRole('button', { name: /Әлібеков Бірінші/ }))
     await user.click(screen.getByRole('button', { name: 'Сақтау' }))
 
-    await waitFor(() => expect(calls.find((c) => c.key.startsWith('PUT'))?.body).toMatchObject({ client_uuid: round.client_uuid, revision: 2, absent_student_ids: [2] }))
+    await waitFor(() => expect(calls.find((c) => c.key.startsWith('PUT'))?.body).toMatchObject({ client_uuid: round.client_uuid, revision: 2, absent_student_ids: [22] }))
   })
 
-  it('басқа планшет өзгерткен болса, тізім жаңартылып, хабар шығады', async () => {
-    let loads = 0
+  it('басқа планшет өзгерткен сынып «қайта тексеріңіз» деп белгіленіп, сервердегі күйі көрсетіледі', async () => {
     renderDuty({
-      'GET /api/duty/session': ok(state()),
-      'GET /api/duty/classes/11': () => ({
-        status: 200,
-        body: ++loads === 1 ? roster({ round }) : roster({ round: { ...round, revision: 3 }, students: roster().students.map((s) => (s.id === 3 ? { ...s, status: 'absent' as const } : s)) }),
-      }),
-      'PUT /api/duty/classes/11/round': () => ({ status: 409, body: { code: 'round_changed' } }),
+      ...base(),
+      'PUT /api/duty/classes/12/round': () => ({ status: 409, body: { code: 'round_changed' } }),
+      'GET /api/duty/classes/12': ok({ ...rosters()[1], round: { ...round, revision: 3 }, students: rosters()[1].students.map((s) => ({ ...s, status: s.id === 23 ? ('absent' as const) : ('present' as const) })) }),
     })
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('button', { name: /5А/ }))
+    await user.click(await screen.findByRole('button', { name: /5Ә/ }))
     await user.click(await screen.findByRole('button', { name: /Әлібеков Бірінші/ }))
     await user.click(screen.getByRole('button', { name: 'Сақтау' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('басқа планшет өзгертті')
-    // Сервердегі күй көрсетіледі: кезекшінің сақталмаған белгісі емес.
+    await user.click(await screen.findByRole('button', { name: /5Ә.*қайта тексеріңіз/ }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('басқа планшет өзгерткен')
+    // Сервердегі күй: кезекшінің жазылмаған өзгерісі емес.
     expect(screen.getByRole('button', { name: /Үлгіев Үшінші/ })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: /Әлібеков Бірінші/ })).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('сынып басқа планшетте белгіленіп қойса, кезекшіге түсіндіріледі', async () => {
-    renderDuty({
-      'GET /api/duty/session': ok(state()),
-      'GET /api/duty/classes/11': ok(roster()),
-      'PUT /api/duty/classes/11/round': ok({ ...roster({ round }), stored_as: 'conflict', kept_locked: [] }),
-    })
+    renderDuty({ ...base(), 'PUT /api/duty/classes/11/round': savedAs(roster({ round }), 'conflict') })
     const user = userEvent.setup()
 
     await user.click(await screen.findByRole('button', { name: /5А/ }))
     await user.click(await screen.findByRole('button', { name: 'Сақтау' }))
 
+    await user.click(await screen.findByRole('button', { name: /5А.*басқа планшет белгілеген/ }))
     expect(await screen.findByText(/5А басқа планшетте белгіленіп қойған/)).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '5А сыныбы' })).toBeInTheDocument()
   })
 
   it('сақталмаған белгімен шығу растауды сұрайды', async () => {
-    renderDuty({ 'GET /api/duty/session': ok(state()), 'GET /api/duty/classes/11': ok(roster()) })
+    renderDuty(base())
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
     const user = userEvent.setup()
 
@@ -243,19 +258,30 @@ describe('сыныпты белгілеу', () => {
     expect(screen.getByRole('heading', { name: '5А сыныбы' })).toBeInTheDocument()
   })
 
-  it('смена бітсе, планшет код бетіне қайтады', async () => {
-    renderDuty({
-      'GET /api/duty/session': ok(state()),
-      'GET /api/duty/classes/11': ok(roster()),
-      'PUT /api/duty/classes/11/round': () => ({ status: 401, body: { code: 'duty_code_ended' } }),
-    })
+  it('код жойылған болса, жіберілмеген белгілер жоғалмайды: завучқа көрсету сұралады', async () => {
+    renderDuty({ ...base(), 'PUT /api/duty/classes/11/round': () => ({ status: 401, body: { code: 'duty_code_ended' } }) })
     const user = userEvent.setup()
 
     await user.click(await screen.findByRole('button', { name: /5А/ }))
-    await user.click(await screen.findByRole('button', { name: 'Сақтау' }))
+    await user.click(await screen.findByRole('button', { name: /Сынақов Екінші/ }))
+    await user.click(screen.getByRole('button', { name: 'Сақтау' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('1 сыныптың белгісі серверге қабылданбады')
+    expect(screen.getByText(/Смена аяқталды, белгілеу жабық\./)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /5А.*1 оқушы жоқ.*қабылданбады/ }))
+    expect(await screen.findByText('Смена аяқталды: белгілерді өзгертуге болмайды.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Сынақов Екінші/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.queryByRole('button', { name: 'Сақтау' })).not.toBeInTheDocument()
+  })
+
+  it('смена біткенде бәрі серверде болса, планшет тазаланып, код бетіне қайтады', async () => {
+    // Планшетте кешегі смена қалған.
+    await dutyDb.putRosters(rosters())
+    await dutyDb.setSession({ state: state(), clock_offset: 0 })
+    renderDuty({ 'GET /api/duty/session': () => ({ status: 401, body: { code: 'duty_code_ended' } }) })
 
     expect(await screen.findByRole('heading', { name: 'Кезекші коды' })).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('Смена аяқталды не код ауыстырылды.')
+    await waitFor(async () => expect(await dutyDb.rosters()).toEqual([]))
   })
 })
 
@@ -280,6 +306,7 @@ describe('завуч: кезекші коды', () => {
       'GET /api/auth/me': ok({ user: admin }),
       'GET /api/admin/backups': ok({ last_at: '2026-11-19T21:30:00+00:00', stale: false, backups: [] }),
       'GET /api/admin/duty-codes': () => ({ status: 200, body: days(issued ? '654321' : '123456') }),
+      'GET /api/admin/round-conflicts': ok({ conflicts: [] }),
       'POST /api/admin/duty-codes': () => { issued = true; return { status: 201, body: { code: '654321', shift: shift('morning', '654321') } } },
     })
     render(
@@ -304,5 +331,44 @@ describe('завуч: кезекші коды', () => {
     expect(confirm).toHaveBeenCalledOnce()
     await waitFor(() => expect(within(screen.getByRole('region', { name: 'Бүгін, 20 қараша' })).getByLabelText('Код')).toHaveTextContent('654 321'))
     expect(calls.find((c) => c.key === 'POST /api/admin/duty-codes')?.body).toEqual({ date: '2026-11-20', shift: 'morning' })
+  })
+
+  it('қақтығыста екі нұсқа қатар көрсетіледі; кейін жеткенін қолдану растауды сұрайды', async () => {
+    const conflict = {
+      id: 7, class: { id: 11, name: '5А' }, date: '2026-11-20', student_count: 25,
+      current: { device_number: 1, saved_at: '2026-11-20T08:15:00+05:00', absent: [{ id: 2, name: 'Сынақов Екінші' }] },
+      incoming: { device_number: 2, marked_at: '2026-11-20T08:12:00+05:00', received_at: '2026-11-20T09:40:00+05:00', absent: [{ id: 1, name: 'Әлібеков Бірінші' }, { id: 3, name: 'Үлгіев Үшінші' }] },
+    }
+    let open = true
+    const calls = mockServer({
+      'GET /api/auth/me': ok({ user: admin }),
+      'GET /api/admin/backups': ok({ last_at: '2026-11-19T21:30:00+00:00', stale: false, backups: [] }),
+      'GET /api/admin/duty-codes': ok(days(null)),
+      'GET /api/admin/round-conflicts': () => ({ status: 200, body: { conflicts: open ? [conflict] : [] } }),
+      'POST /api/admin/round-conflicts/7/resolve': () => { open = false; return { status: 200, body: { conflicts: [] } } },
+    })
+    render(
+      <MemoryRouter initialEntries={['/admin/duty']}>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const user = userEvent.setup()
+
+    const card = await screen.findByRole('region', { name: '5А сыныбы, 20 қараша' })
+    const current = within(card).getByRole('region', { name: 'Қазір сақтаулы тұрғаны' })
+    const incoming = within(card).getByRole('region', { name: 'Кейін жеткені' })
+    expect(current).toHaveTextContent('1-планшет · сақталған уақыты 08:15')
+    expect(within(current).getByText('Сынақов Екінші')).toBeInTheDocument()
+    expect(incoming).toHaveTextContent('2-планшет · белгіленген уақыты 08:12')
+    expect(within(incoming).getByText('Жоқ: 2 оқушы')).toBeInTheDocument()
+
+    await user.click(within(incoming).getByRole('button', { name: 'Осыны қолдану' }))
+
+    expect(confirm).toHaveBeenCalledWith('5А сыныбының белгілері кейін жеткен нұсқаға ауыстырылады. Жалғастырасыз ба?')
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Шешілмеген қақтығыстар' })).not.toBeInTheDocument())
+    expect(calls.find((c) => c.key.includes('/resolve'))?.body).toEqual({ resolution: 'replace' })
   })
 })

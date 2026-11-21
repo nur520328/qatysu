@@ -8,6 +8,7 @@ export interface Round {
   revision: number
   absent_count: number
   saved_at: string
+  received_late: boolean
 }
 
 export interface DutyClass {
@@ -51,6 +52,7 @@ export const dutyApi = {
   login: (code: string) => request<DutyState>('POST', '/duty/login', { code }),
   session: () => request<DutyState>('GET', '/duty/session'),
   logout: () => request<void>('POST', '/duty/logout'),
+  rosters: () => request<{ rosters: Roster[] }>('GET', '/duty/rosters'),
   roster: (classId: number) => request<Roster>('GET', `/duty/classes/${classId}`),
   saveRound: (classId: number, body: { client_uuid: string; absent_student_ids: number[]; revision: number | null; client_time: string }) =>
     request<SaveResult>('PUT', `/duty/classes/${classId}/round`, body),

@@ -108,7 +108,8 @@
     "unknown_students": "班级名单有变化。名单已更新，请重新登记。",
     "class_not_in_shift": "这个班不属于本班次。",
     "date_not_issuable": "这一天不能发放值日码。",
-    "shift_ended": "这个班次已经结束。"
+    "shift_ended": "这个班次已经结束。",
+    "conflict_already_resolved": "这个冲突已经处理过了。"
   },
   "calendar": {
     "title": "校历",
@@ -313,7 +314,25 @@
     "saved": "{{name}} 已保存。",
     "conflict": "{{name}} 已在另一台平板上登记。你的登记没有丢失：已发送给副校长。下面显示的是已保存的登记。",
     "keptLocked": "教师登记过的学生没有被改动。",
-    "reload": "重新加载"
+    "reload": "重新加载",
+    "offline": "没有网络。请继续登记：登记会保存在平板上，联网后自动发送。",
+    "pending_other": "有 {{count}} 个班尚未发送到服务器",
+    "pendingHint": "请不要关闭平板。联网后会自动发送。",
+    "sendNow": "立即发送",
+    "sending": "正在发送…",
+    "allSynced": "所有登记都已送达服务器。",
+    "closed": "班次已结束，不能再登记。",
+    "rejected_other": "有 {{count}} 个班的登记未被服务器接受（值日码已更换或已超时）。请把这个画面给副校长看。",
+    "syncPending": "未发送",
+    "syncConflict": "另一台平板已登记",
+    "syncReview": "请重新检查",
+    "syncRejected": "未被接受",
+    "logoutBlocked": "还有未发送的班级。联网并全部送达服务器之前不能退出。",
+    "logoutRejectedConfirm": "未被接受的登记将从平板上删除。已经给副校长看过了吗？",
+    "savedLocal": "{{name}} 已保存在平板上。",
+    "review": "另一台平板修改了这个班的登记，所以你最后的修改没有写入。下面是服务器上的登记：请检查，必要时修改后重新保存。",
+    "readOnly": "班次已结束：不能修改登记。",
+    "notStored": "平板上没有这个班的名单。联网后请重新打开。"
   },
   "dutyAdmin": {
     "title": "值日码",
@@ -344,5 +363,21 @@
     "morningEnd": "上午班结束时间",
     "afternoonEnd": "下午班结束时间",
     "hint": "到这个时间值日码失效，之后值日生不能再修改登记。"
+  },
+  "conflicts": {
+    "title": "未处理的冲突",
+    "lead": "这些班被两台平板分别登记了（其中一台当时没有网络）。请选择哪一份正确：另一份会保留在历史记录中。",
+    "classDate": "{{name}} 班，{{date}}",
+    "current": "目前保存的",
+    "incoming": "后到的",
+    "device": "{{n}} 号平板",
+    "deviceUnknown": "平板未知",
+    "savedAt": "保存时间 {{time}}",
+    "markedAt": "登记时间 {{time}}",
+    "absentTitle_other": "缺勤：{{count}} 人",
+    "nobody": "全部到齐",
+    "keep": "保留这一份",
+    "replace": "采用这一份",
+    "replaceConfirm": "{{name}} 班的登记将替换为后到的那一份。继续吗？"
   }
 }

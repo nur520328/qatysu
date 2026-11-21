@@ -1,90 +1,52 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { dutyApi } from '../../api/duty'
-import type { DutyClass, DutyState } from '../../api/duty'
 import { Shell } from '../../components/Shell'
+import { DutyStore } from '../../duty/store'
+import type { ClassView, DutySnapshot } from '../../duty/store'
 import { clockTime, dayMonth } from '../../lib/dates'
 import { useErrorText } from '../../lib/errors'
 import { DutyClassPage } from './DutyClassPage'
-import { isDutyEnded } from './ended'
-
-type Phase =
-  | { name: 'loading' }
-  | { name: 'code'; notice: 'ended' | null }
-  | { name: 'classes'; state: DutyState; flash: string | null }
-  | { name: 'class'; state: DutyState; target: DutyClass }
 
 /**
  * Кезекшінің планшеттегі жұмысы: код енгізу → сыныптар → белгілеу.
- * Беттер мекенжайға байланбаған: бір экран, ішкі күй (5-кезеңде интернетсіз де жұмыс істеуі үшін).
+ * Экрандар планшеттегі қоймадан оқиды, сондықтан интернетсіз де жұмыс істейді (docs/кезең-5-жоспар.md).
+ * Беттер мекенжайға байланбаған: бір экран, ішкі күй.
  */
 export function DutyApp() {
   const { t } = useTranslation()
-  const [phase, setPhase] = useState<Phase>({ name: 'loading' })
+  const [store] = useState(() => new DutyStore())
+  const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot)
+  const [open, setOpen] = useState<ClassView | null>(null)
+  const [flash, setFlash] = useState<string | null>(null)
 
-  const refresh = useCallback((flash: string | null = null) => {
-    return dutyApi.session().then(
-      // Жауап кешігіп келгенде кезекші келесі сыныпты ашып үлгеруі мүмкін: ондайда оны сыныптан шығарып жібермейміз.
-      (state) => setPhase((p) => (p.name === 'classes' ? { name: 'classes', state, flash: flash ?? p.flash } : p)),
-      (caught: unknown) => {
-        // Байланыс уақытша үзілсе, экран өзгермейді; сеанс біткенде ғана код бетіне қайтады.
-        if (isDutyEnded(caught)) setPhase({ name: 'code', notice: 'ended' })
-        else if (flash !== null) setPhase((p) => (p.name === 'classes' ? { ...p, flash } : p))
-      },
-    )
-  }, [])
-
-  // Бет ашылғанда: планшет бұрын кірген болса, бірден сыныптарға өтеді; әйтпесе код сұралады.
   useEffect(() => {
-    let alive = true
-    dutyApi.session().then(
-      (state) => { if (alive) setPhase({ name: 'classes', state, flash: null }) },
-      () => { if (alive) setPhase({ name: 'code', notice: null }) },
-    )
-    return () => { alive = false }
-  }, [])
+    void store.start()
+    return () => store.stop()
+  }, [store])
 
-  // Басқа планшеттің аралаулары мен смена соңы минут сайын тексеріледі (тек сыныптар бетінде).
-  const onList = phase.name === 'classes'
-  useEffect(() => {
-    if (!onList) return
-    const timer = window.setInterval(() => void refresh(), 60_000)
-    return () => window.clearInterval(timer)
-  }, [onList, refresh])
+  if (snapshot.phase === 'loading') return <p className="splash" role="status">{t('common.loading')}</p>
+  if (snapshot.phase === 'code') return <CodeEntry store={store} notice={snapshot.notice} />
 
-  if (phase.name === 'loading') return <p className="splash" role="status">{t('common.loading')}</p>
-
-  if (phase.name === 'code') {
-    return <CodeEntry notice={phase.notice} onEntered={(state) => setPhase({ name: 'classes', state, flash: null })} />
-  }
-
-  if (phase.name === 'class') {
+  if (open !== null) {
     return (
       <DutyClassPage
-        target={phase.target}
-        onDone={(flash) => {
-          // Алдымен бұрынғы тізім көрсетіледі, содан кейін серверден жаңасы келеді.
-          setPhase({ name: 'classes', state: phase.state, flash })
-          void refresh(flash)
+        store={store}
+        target={open}
+        readOnly={snapshot.closed}
+        onDone={(message) => {
+          setFlash(message)
+          setOpen(null)
         }}
-        onEnded={() => setPhase({ name: 'code', notice: 'ended' })}
       />
     )
   }
 
-  return (
-    <ClassList
-      state={phase.state}
-      flash={phase.flash}
-      onOpen={(target) => setPhase({ name: 'class', state: phase.state, target })}
-      onLeft={() => setPhase({ name: 'code', notice: null })}
-    />
-  )
+  return <ClassList store={store} snapshot={snapshot} flash={flash} onOpen={(target) => { setFlash(null); setOpen(target) }} />
 }
 
-function CodeEntry({ notice, onEntered }: { notice: 'ended' | null; onEntered: (state: DutyState) => void }) {
+function CodeEntry({ store, notice }: { store: DutyStore; notice: 'ended' | null }) {
   const { t } = useTranslation()
   const errorText = useErrorText()
   const [code, setCode] = useState('')
@@ -97,7 +59,7 @@ function CodeEntry({ notice, onEntered }: { notice: 'ended' | null; onEntered: (
     setBusy(true)
     setError(null)
     try {
-      onEntered(await dutyApi.login(code))
+      await store.login(code)
     } catch (caught) {
       setError(errorText(caught))
       setBusy(false)
@@ -132,21 +94,39 @@ function CodeEntry({ notice, onEntered }: { notice: 'ended' | null; onEntered: (
 }
 
 interface ListProps {
-  state: DutyState
+  store: DutyStore
+  snapshot: DutySnapshot
   flash: string | null
-  onOpen: (target: DutyClass) => void
-  onLeft: () => void
+  onOpen: (target: ClassView) => void
 }
 
-function ClassList({ state, flash, onOpen, onLeft }: ListProps) {
+const SYNC_LABEL = { pending: 'duty.syncPending', conflict: 'duty.syncConflict', review: 'duty.syncReview', rejected: 'duty.syncRejected' } as const
+
+function ClassList({ store, snapshot, flash, onOpen }: ListProps) {
   const { t, i18n } = useTranslation()
-  const done = state.classes.filter((c) => c.round !== null).length
-  const grades = [...new Set(state.classes.map((c) => c.grade))]
+  const [sending, setSending] = useState(false)
+  const [blocked, setBlocked] = useState(false)
+  const session = snapshot.session
+  if (session === null) return null
+
+  const done = snapshot.classes.filter((c) => c.absent_count !== null).length
+  const total = snapshot.classes.length
+  const grades = [...new Set(snapshot.classes.map((c) => c.grade))]
 
   async function leave() {
-    if (!window.confirm(t('duty.logoutConfirm'))) return
-    await dutyApi.logout().catch(() => undefined)
-    onLeft()
+    if (snapshot.pending > 0) {
+      setBlocked(true)
+      return
+    }
+    const question = snapshot.rejected > 0 ? t('duty.logoutRejectedConfirm') : t('duty.logoutConfirm')
+    if (!window.confirm(question)) return
+    await store.logout()
+  }
+
+  async function sendNow() {
+    setSending(true)
+    await store.sync()
+    setSending(false)
   }
 
   return (
@@ -154,36 +134,62 @@ function ClassList({ state, flash, onOpen, onLeft }: ListProps) {
       <section className="page">
         <header>
           <h1 className="page__title">
-            {t('duty.header', { shift: t(state.shift === 'morning' ? 'duty.shiftMorning' : 'duty.shiftAfternoon'), date: dayMonth(state.date, i18n.language) })}
+            {t('duty.header', { shift: t(session.shift === 'morning' ? 'duty.shiftMorning' : 'duty.shiftAfternoon'), date: dayMonth(session.date, i18n.language) })}
           </h1>
           <p className="muted">
-            {t('duty.until', { time: clockTime(state.expires_at) })} · {t('duty.device', { n: state.device_number })}
+            {snapshot.closed ? t('duty.closed') : t('duty.until', { time: clockTime(session.expires_at) })} · {t('duty.device', { n: session.device_number })}
           </p>
         </header>
 
-        {flash !== null && <p className="note" role="status">{flash}</p>}
-        <p className={done === state.classes.length && done > 0 ? 'duty-progress duty-progress--done' : 'duty-progress'}>
-          {t('duty.progress', { done, total: state.classes.length })}
-          {done === state.classes.length && done > 0 && ` ${t('duty.allDone')}`}
+        {blocked && snapshot.pending > 0 && <p className="alert" role="alert">{t('duty.logoutBlocked')}</p>}
+        {snapshot.rejected > 0 && <p className="alert" role="alert">{t('duty.rejected', { count: snapshot.rejected })}</p>}
+
+        {snapshot.pending > 0 ? (
+          <div className="syncbar syncbar--warn" role="status">
+            <div>
+              <p className="syncbar__main">{t('duty.pending', { count: snapshot.pending })}</p>
+              <p className="syncbar__hint">{snapshot.online ? t('duty.sending') : t('duty.pendingHint')}</p>
+            </div>
+            <button className="btn" type="button" disabled={sending} onClick={() => void sendNow()}>
+              {sending ? t('duty.sending') : t('duty.sendNow')}
+            </button>
+          </div>
+        ) : !snapshot.online ? (
+          <p className="syncbar" role="status">{t('duty.offline')}</p>
+        ) : done > 0 && snapshot.rejected === 0 ? (
+          <p className="syncbar syncbar--ok" role="status">{t('duty.allSynced')}</p>
+        ) : null}
+        {snapshot.pending > 0 && !snapshot.online && <p className="muted">{t('duty.offline')}</p>}
+
+        {flash !== null && <p className="note">{flash}</p>}
+        <p className={done === total && done > 0 ? 'duty-progress duty-progress--done' : 'duty-progress'}>
+          {t('duty.progress', { done, total })}
+          {done === total && done > 0 && ` ${t('duty.allDone')}`}
         </p>
 
         {grades.map((grade) => (
           <section key={grade} className="group" aria-label={t('duty.grade', { grade })}>
             <h2 className="group__title">{t('duty.grade', { grade })}</h2>
             <ul className="tiles tiles--duty">
-              {state.classes.filter((c) => c.grade === grade).map((cls) => (
-                <li key={cls.id}>
-                  <button type="button" className={cls.round === null ? 'tile tile--todo' : 'tile tile--done'} onClick={() => onOpen(cls)}>
-                    <span className="tile__name">{cls.name}</span>
-                    <span className="tile__line">
-                      {cls.round === null
-                        ? t('duty.notDone')
-                        : cls.round.absent_count === 0 ? t('duty.nobodyAbsent') : t('duty.absent', { count: cls.round.absent_count })}
-                    </span>
-                    <span className="tile__line tile__line--small">{t('duty.students', { count: cls.student_count })}</span>
-                  </button>
-                </li>
-              ))}
+              {snapshot.classes.filter((c) => c.grade === grade).map((cls) => {
+                const flagged = cls.sync !== 'none' && cls.sync !== 'synced'
+                return (
+                  <li key={cls.id}>
+                    <button type="button" onClick={() => onOpen(cls)}
+                      className={cls.absent_count === null ? 'tile tile--todo' : flagged ? 'tile tile--flag' : 'tile tile--done'}>
+                      <span className="tile__name">{cls.name}</span>
+                      <span className="tile__line">
+                        {cls.absent_count === null
+                          ? t('duty.notDone')
+                          : cls.absent_count === 0 ? t('duty.nobodyAbsent') : t('duty.absent', { count: cls.absent_count })}
+                      </span>
+                      <span className="tile__line tile__line--small">
+                        {flagged ? t(SYNC_LABEL[cls.sync as keyof typeof SYNC_LABEL]) : t('duty.students', { count: cls.student_count })}
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
             </ul>
           </section>
         ))}

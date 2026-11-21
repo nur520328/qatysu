@@ -44,6 +44,12 @@ xsrf() { python3 -c "import urllib.parse; [print(urllib.parse.unquote(l.split('\
 echo "== HTTP тексерістері"
 curl -s "$BASE/" | grep -q '<div id="root">' || fail "басты бет интерфейсті қайтармады"
 curl -s "$BASE/kez-kelgen/bet" | grep -q '<div id="root">' || fail "ішкі мекенжай интерфейсті қайтармады"
+# Интернетсіз жұмыс (PWA): Service Worker мен манифест сайттың түбірінен берілуі тиіс.
+curl -s "$BASE/sw.js" | grep -q "precacheAndRoute" || fail "Service Worker берілмеді"
+curl -s "$BASE/manifest.webmanifest" | grep -q '"start_url"' || fail "манифест берілмеді"
+curl -s "$BASE/" | grep -q "registerSW.js" || fail "басты бетте Service Worker тіркелмеген"
+curl -s "$BASE/kezekshi" | grep -q '<div id="root">' || fail "кезекші беті интерфейсті қайтармады"
+[ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/icons/icon-192.png")" = 200 ] || fail "белгіше берілмеді"
 ASSET="$(curl -s "$BASE/" | grep -o '/assets/[^"]*\.js' | head -1)"
 [ "$(code "$BASE$ASSET")" = 200 ] || fail "интерфейс файлы ($ASSET) берілмеді"
 [ "$(code "$BASE/api/auth/me")" = 401 ] || fail "кірмеген адамға 401 қайтпады"

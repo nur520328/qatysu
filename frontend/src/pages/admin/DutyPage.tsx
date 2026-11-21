@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { adminApi } from '../../api/admin'
-import type { DutyDay, DutyShift } from '../../api/admin'
+import type { ConflictSide, DutyDay, DutyShift, RoundConflict } from '../../api/admin'
 import { clockTime, dayMonth } from '../../lib/dates'
 import { useErrorText } from '../../lib/errors'
 import { useLoad } from '../../lib/useLoad'
@@ -10,7 +10,10 @@ import { useLoad } from '../../lib/useLoad'
 export function DutyPage() {
   const { t, i18n } = useTranslation()
   const errorText = useErrorText()
-  const fetcher = useCallback(() => adminApi.dutyCodes(), [])
+  const fetcher = useCallback(async () => {
+    const [codes, conflicts] = await Promise.all([adminApi.dutyCodes(), adminApi.roundConflicts()])
+    return { ...codes, conflicts }
+  }, [])
   const { data, error: loadError, reload } = useLoad(fetcher)
   const [actionError, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -53,6 +56,20 @@ export function DutyPage() {
       {error !== null && <p className="alert" role="alert">{error}</p>}
       {data.days.length === 0 && <p className="alert">{t('dutyAdmin.noSchoolDay')}</p>}
 
+      {data.conflicts.length > 0 && (
+        <section className="group" aria-label={t('conflicts.title')}>
+          <h2 className="panel__title">{t('conflicts.title')}</h2>
+          <p className="muted">{t('conflicts.lead')}</p>
+          {data.conflicts.map((conflict) => (
+            <ConflictCard key={conflict.id} conflict={conflict} busy={busy}
+              onResolve={(resolution) => {
+                if (resolution === 'replace' && !window.confirm(t('conflicts.replaceConfirm', { name: conflict.class.name }))) return
+                void run(() => adminApi.resolveConflict(conflict.id, resolution))
+              }} />
+          ))}
+        </section>
+      )}
+
       {data.days.map((day) => {
         const title = t(day.is_today ? 'dutyAdmin.today' : 'dutyAdmin.nextDay', { date: dayMonth(day.date, i18n.language) })
         return (
@@ -74,6 +91,39 @@ export function DutyPage() {
           </section>
         )
       })}
+    </section>
+  )
+}
+
+function ConflictCard({ conflict, busy, onResolve }: { conflict: RoundConflict; busy: boolean; onResolve: (r: 'keep' | 'replace') => void }) {
+  const { t, i18n } = useTranslation()
+  const title = t('conflicts.classDate', { name: conflict.class.name, date: dayMonth(conflict.date, i18n.language) })
+  const device = (side: ConflictSide) => (side.device_number === null ? t('conflicts.deviceUnknown') : t('conflicts.device', { n: side.device_number }))
+
+  const sides = [
+    { key: 'keep' as const, label: t('conflicts.current'), side: conflict.current, when: t('conflicts.savedAt', { time: clockTime(conflict.current.saved_at) }) },
+    {
+      key: 'replace' as const, label: t('conflicts.incoming'), side: conflict.incoming,
+      when: conflict.incoming.marked_at === null ? '' : t('conflicts.markedAt', { time: clockTime(conflict.incoming.marked_at) }),
+    },
+  ]
+
+  return (
+    <section className="panel form" aria-label={title}>
+      <h3 className="panel__title">{title}</h3>
+      <div className="shifts">
+        {sides.map(({ key, label, side, when }) => (
+          <section key={key} className="side" aria-label={label}>
+            <h4 className="side__title">{label}</h4>
+            <p className="muted">{[device(side), when].filter(Boolean).join(' · ')}</p>
+            <p className="panel__lead">{side.absent.length === 0 ? t('conflicts.nobody') : t('conflicts.absentTitle', { count: side.absent.length })}</p>
+            {side.absent.length > 0 && <ul className="side__list">{side.absent.map((s) => <li key={s.id}>{s.name}</li>)}</ul>}
+            <button className={key === 'keep' ? 'btn' : 'btn btn--strong'} type="button" disabled={busy} onClick={() => onResolve(key)}>
+              {t(`conflicts.${key}`)}
+            </button>
+          </section>
+        ))}
+      </div>
     </section>
   )
 }

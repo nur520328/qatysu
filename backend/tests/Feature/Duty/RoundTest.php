@@ -11,6 +11,7 @@ use App\Models\SchoolClass;
 use App\Models\Student;
 use App\Services\EnrollmentService;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 
 class RoundTest extends DutyTestCase
 {
@@ -65,6 +66,17 @@ class RoundTest extends DutyTestCase
 
         $this->getJson('/api/duty/session')->assertJsonPath('classes.0.round.absent_count', 1);
         $this->actingAs($this->admin)->getJson('/api/admin/duty-codes')->assertJsonPath('days.0.shifts.0.classes_done', 1);
+    }
+
+    public function test_tablet_time_sent_in_utc_is_stored_in_school_time(): void
+    {
+        // Браузер уақытты UTC-мен жібереді: 03:12Z — мектеп уақытымен 08:12.
+        $this->putJson("/api/duty/classes/{$this->class->id}/round", [
+            'client_uuid' => $this->uuid(), 'absent_student_ids' => [], 'client_time' => '2026-11-20T03:12:00.000Z',
+        ])->assertOk();
+
+        $this->assertSame('2026-11-20 08:12:00', AttendanceRound::query()->sole()->client_time->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-11-20 08:12:00', DB::table('attendance_rounds')->value('client_time'));
     }
 
     public function test_resending_the_same_round_changes_nothing(): void
