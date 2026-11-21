@@ -47,8 +47,19 @@ class Install extends Command
             $this->line('Шифрлау кілті бар, өзгертілген жоқ.');
         }
 
+        $this->alignDatabaseCharset();
+
         Artisan::call('migrate', ['--force' => true]);
         $this->line('Дерекқор кестелері: '.trim(preg_replace('/\s+/', ' ', Artisan::output())));
+
+        $wrongTables = $this->tablesWithWrongCharset();
+        if ($wrongTables !== []) {
+            $this->error('ҚАТЕ: мына кестелердің кодталуы utf8mb4 емес: '.implode(', ', $wrongTables)
+                .'. Қазақ әріптері дұрыс сақталмауы мүмкін. Claude-қа хабарлаңыз.');
+
+            return self::FAILURE;
+        }
+        $this->line('Кестелердің кодталуы: utf8mb4 (қазақ, орыс, қытай әріптеріне жарайды).');
 
         // Кілт пен баптау өзгерген болуы мүмкін; ескі кэш қалмауы тиіс.
         Artisan::call('optimize:clear');
@@ -87,16 +98,45 @@ class Install extends Command
         try {
             $version = DB::selectOne('select version() as v')->v;
             $this->line('Дерекқор: '.$version);
-            $charset = DB::selectOne('select @@character_set_database as c')->c;
-            if ($charset !== 'utf8mb4') {
-                $problems[] = "Дерекқор кодталуы utf8mb4 болуы керек, ал қазір {$charset}.";
-            }
         } catch (Throwable $e) {
             $problems[] = 'Дерекқорға қосылу мүмкін болмады. .env файлындағы DB_ мәндерін (әсіресе парольді) тексеріңіз. Себебі: '
                 .$this->safeMessage($e);
         }
 
         return $problems;
+    }
+
+    /**
+     * Хостинг панелі дерекқорды ескі `utf8mb3` кодталуымен ашуы мүмкін. Біздің кестелер
+     * кодталуын өздері көрсетеді (utf8mb4), сондықтан бұл оларға әсер етпейді; дегенмен
+     * дерекқордың әдепкі мәнін де түзеп қоямыз. Құқық жетпесе, бұл қате емес.
+     */
+    private function alignDatabaseCharset(): void
+    {
+        $current = DB::selectOne('select @@character_set_database as c')->c;
+        if ($current === 'utf8mb4') {
+            return;
+        }
+
+        try {
+            $name = str_replace('`', '``', (string) DB::connection()->getDatabaseName());
+            DB::statement("alter database `{$name}` character set utf8mb4 collate utf8mb4_unicode_ci");
+            $this->line("Дерекқордың әдепкі кодталуы {$current} еді, utf8mb4-ке ауыстырылды.");
+        } catch (Throwable) {
+            $this->line("Дерекқордың әдепкі кодталуы {$current} (өзгертуге құқық жоқ). Кестелер бәрібір utf8mb4-пен ашылады.");
+        }
+    }
+
+    /** @return list<string> */
+    private function tablesWithWrongCharset(): array
+    {
+        $rows = DB::select(
+            "select table_name as name from information_schema.tables
+             where table_schema = database() and table_type = 'BASE TABLE'
+               and table_collation not like 'utf8mb4%'"
+        );
+
+        return array_map(static fn (object $row): string => $row->name, $rows);
     }
 
     private function ensureAdmin(): int

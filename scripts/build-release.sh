@@ -23,6 +23,7 @@ tar -C "$ROOT/backend" \
   --exclude='./vendor' --exclude='./node_modules' --exclude='./tests' \
   --exclude='./phpunit.xml' --exclude='./.phpunit*' --exclude='./.editorconfig' \
   --exclude='./.gitattributes' --exclude='./pint.json' \
+  --exclude='./.gitignore' --exclude='./.npmrc' --exclude='./.styleci.yml' \
   --exclude='./storage/logs/*.log' \
   --exclude='./storage/framework/cache/data/*' \
   --exclude='./storage/framework/sessions/*' \
