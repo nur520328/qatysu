@@ -178,6 +178,28 @@ class RoundTest extends DutyTestCase
         $this->assertSame(0, AttendanceRound::query()->count());
     }
 
+    public function test_marks_survive_a_new_code_and_can_be_continued_with_it(): void
+    {
+        $uuid = $this->uuid();
+        $this->save(['Сынақов'], $uuid)->assertOk();
+        $second = $this->classWith('5Ә', ['Екіншіев Төртінші']);
+
+        // Завуч сол сменаға жаңа код берді: ескі код жарамсыз, бірақ белгілер орнында.
+        $this->dutyLogin($this->issue());
+
+        $state = $this->getJson('/api/duty/session')->assertOk();
+        $state->assertJsonPath('classes.0.round.absent_count', 1)->assertJsonPath('classes.1.round', null);
+        $roster = $this->getJson("/api/duty/classes/{$this->class->id}")->assertOk();
+        $this->assertSame(['present', 'absent', 'present'], array_column($roster->json('students'), 'status'));
+
+        // Жаңа кодпен бұрынғы сыныпты түзеуге де, қалған сыныптарды белгілеуге де болады.
+        $this->save([], $roster->json('round.client_uuid'), $roster->json('round.revision'))->assertOk()
+            ->assertJsonPath('stored_as', 'round')->assertJsonPath('round.absent_count', 0);
+        $this->save([], class: $second)->assertOk()->assertJsonPath('stored_as', 'round');
+        $this->assertSame(2, AttendanceRound::query()->count());
+        $this->assertSame(1, AttendanceAudit::query()->count());
+    }
+
     public function test_nothing_can_be_saved_after_the_shift_ends_or_without_a_code(): void
     {
         $uuid = $this->uuid();
