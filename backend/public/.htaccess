@@ -23,3 +23,9 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+# Қалта мазмұны тізім болып көрсетілмейді; жасырын файлдар берілмейді.
+Options -Indexes
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
