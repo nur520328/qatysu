@@ -23,7 +23,7 @@ class Backup extends Command
 
             return self::SUCCESS;
         } catch (Throwable $e) {
-            $this->line('ҚАТЕ: сақтық көшірме жасалмады. '.mb_substr($e->getMessage(), 0, 200));
+            $this->line('ҚАТЕ: сақтық көшірме жасалмады. '.mb_substr($e->getMessage() !== '' ? $e->getMessage() : class_basename($e), 0, 200));
 
             return self::FAILURE;
         }

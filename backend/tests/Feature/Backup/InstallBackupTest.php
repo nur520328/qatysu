@@ -83,16 +83,36 @@ class InstallBackupTest extends TestCase
         $this->assertCount(1, app(BackupService::class)->all());
     }
 
+    public function test_update_is_not_blocked_by_the_daily_limit_for_manual_backups(): void
+    {
+        // Хостингте болған жағдай: бір күнде бірнеше жаңарту мен қолмен жасалған көшірме шекке жеткізді.
+        User::factory()->admin()->create();
+        for ($i = 0; $i < BackupService::MAX_PER_DAY; $i++) {
+            $this->travel(1)->seconds();
+            app(BackupService::class)->create();
+        }
+        $this->travel(1)->seconds();
+        app('migrator')->path($this->extraMigrations);
+
+        [$exit, $output] = $this->install();
+
+        $this->assertSame(0, $exit, $output);
+        $this->assertStringContainsString('Жаңарту алдындағы көшірме: ', $output);
+        $this->assertTrue(Schema::hasTable('probe'));
+        $this->assertCount(BackupService::MAX_PER_DAY + 1, app(BackupService::class)->all());
+    }
+
     public function test_tables_are_not_changed_when_the_backup_fails(): void
     {
         User::factory()->admin()->create();
         app('migrator')->path($this->extraMigrations);
-        $this->mock(BackupService::class, fn ($mock) => $mock->shouldReceive('create')->andThrow(new RuntimeException('диск толды')));
+        $this->mock(BackupService::class, fn ($mock) => $mock->shouldReceive('create')->andThrow(new RuntimeException('')));
 
         [$exit, $output] = $this->install();
 
         $this->assertSame(1, $exit, $output);
         $this->assertStringContainsString('кестелер өзгертілген жоқ', $output);
+        $this->assertStringContainsString('RuntimeException', $output); // хабары бос қатенің де түрі көрінеді
         $this->assertFalse(Schema::hasTable('probe'));
         $this->assertStringContainsString('"result":"backup_failed"', (string) file_get_contents(Install::historyPath()));
     }

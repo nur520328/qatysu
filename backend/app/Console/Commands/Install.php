@@ -75,14 +75,15 @@ class Install extends Command
         // миграция болса, алдымен көшірме жасалады; ол сәтсіз болса, жаңарту тоқтайды.
         if ($state['tables'] > 0 && $this->hasPendingMigrations()) {
             try {
-                $backup = app(BackupService::class)->create();
+                $backup = app(BackupService::class)->create(required: true);
                 $this->details[] = 'Жаңарту алдындағы көшірме: '.$backup['name'].'.';
             } catch (Throwable $e) {
                 $this->history($state, 0, 'backup_failed');
 
                 return $this->finish(false, [
                     'ҚАТЕ: жаңарту алдында сақтық көшірме жасалмады, сондықтан кестелер өзгертілген жоқ.',
-                    mb_substr($e->getMessage(), 0, 160),
+                    // Хабары бос қате де болады; ондайда түрі көрсетіледі, әйтпесе себебі мүлдем белгісіз қалады.
+                    mb_substr($e->getMessage() !== '' ? $e->getMessage() : class_basename($e), 0, 160),
                 ]);
             }
         }

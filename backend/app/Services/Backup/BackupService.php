@@ -20,7 +20,7 @@ class BackupService
 
     public const WEEKLY_WEEKS = 8;
 
-    /** Қолмен жасалатын көшірмелер дискіні толтырмауы үшін. */
+    /** Қолмен жасалатын көшірмелер дискіні толтырмауы үшін. Міндетті көшірмелерге (жаңарту алдында) қолданылмайды. */
     public const MAX_PER_DAY = 5;
 
     public const NAME_PATTERN = '/^qatysu-(\d{8})-(\d{6})\.sql\.gz$/';
@@ -40,11 +40,16 @@ class BackupService
     /**
      * @return array{name: string, size: int, created_at: string, version: string, tables: int, rows: int}
      */
-    public function create(): array
+    /**
+     * @param  bool  $required  true: күндік шек қолданылмайды. Шек тек қолмен жасалатын көшірмелерге арналған;
+     *                          жаңарту алдындағы көшірме міндетті, ол шекке тірелмеуі тиіс (2026-11-21 күні
+     *                          бір күнде бірнеше жаңарту жасалғанда дәл солай болып, жаңарту тоқтап қалды).
+     */
+    public function create(bool $required = false): array
     {
         $now = CarbonImmutable::now();
         $today = array_filter($this->all(), static fn (array $b): bool => str_starts_with($b['name'], 'qatysu-'.$now->format('Ymd')));
-        if (count($today) >= self::MAX_PER_DAY) {
+        if (! $required && count($today) >= self::MAX_PER_DAY) {
             throw new BackupLimitReached;
         }
 
