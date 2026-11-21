@@ -131,3 +131,52 @@ Frontend пен backend арасындағы келісім. Екі жақ та 
 | `max_lessons_per_shift` | 7 | 1–12 | бір сменадағы ең көп сабақ саны |
 | `homeroom_edit_days` | 14 | 0–90 | жетекші өткен жазбаны неше күнге дейін өзгерте алады |
 | `pending_reason_days` | 3 | 1–30 | анықталмаған себеп неше оқу күнінен кейін бөлек көрсетіледі |
+
+### Excel-ден жүктеу
+
+Екі қадам, екеуі де бір жолға `multipart/form-data` түрінде жіберіледі:
+
+1. **Алдын ала қарау:** тек `file`. Ештеңе өзгермейді; жауапта не болатыны және `digest` бар.
+2. **Растау:** сол `file` + алдыңғы жауаптағы `digest`. Файл басқа болса `409 file_changed`.
+
+Файл: тек `.xlsx`, 5 МБ-қа дейін, парақта 2000 жолға дейін. Серверде сақталмайды.
+Ортақ қателер: `422 file_not_xlsx`, `422 file_unreadable`, `422 too_many_rows`.
+
+| Әдіс | Жол | Жауап |
+|---|---|---|
+| POST | `/import/students` | `{"digest", "imported": N \| null, "summary": {"new", "exists", "other_class", "errors"}, "sheets": [{"name", "new", "exists", "other_class", "errors", "error"}], "problems": [row], "other_class": [row]}` |
+| POST | `/import/teachers` | `{"digest", "summary": {"new", "exists", "errors", "warnings"}, "new": [{"row", "full_name", "login", "homeroom", "warning"}], "problems": [row], "credentials": [{"full_name", "login", "password", "homeroom"}] \| null}`; тақырып табылмаса `422 header_not_found` |
+
+**Оқушылар файлы** (мектеп пішімі): әр сынып бөлек парақта; тақырып жолында «Тегі», «Аты»,
+«Сынып» болуы тиіс («Әкесінің аты» міндетті емес; орысша тақырыптар да танылады). Тақырып
+алғашқы 15 жолдың ішінде ізделеді. Сыныптар алдын ала ашылған болуы керек.
+
+- `new` — қосылады; `exists` — сол сыныпта бұрыннан бар, қайта қосылмайды;
+  `other_class` — аты-жөні бірдей оқушы басқа сыныпта тұр: өзі көшірілмейді, тізімде көрсетіледі.
+- Жол қателері (`problems[].code`): `missing_last_name`, `missing_first_name`, `name_too_long`,
+  `invalid_class`, `class_not_found`, `class_closed`, `duplicate_in_file`. Парақ қатесі: `header_not_found`.
+- Қате жолдар өткізіледі, қалғандары жүктеледі.
+
+**Мұғалімдер файлы** (`docs/үлгілер/mugalimder-ulgi.xlsx`): тақырыпта «Тегі», «Аты» міндетті;
+«Әкесінің аты», «Жетекші сыныбы», «Логин» міндетті емес. «№» бағанында «үлгі» деп тұрған жол өткізіледі.
+
+- Логин бос болса, тегі мен атының бас әрпінен жасалады (`akhmetova.g`); бос емес болса соңына 2, 3 … қосылады.
+- Аты-жөні бірдей аккаунт бар болса, жол `exists` болып саналады.
+- Сыныптың жетекшісі бұрыннан бар болса, аккаунт ашылады, бірақ жетекшілік берілмейді (`warning: homeroom_taken`).
+- Жол қателері: `missing_last_name`, `missing_first_name`, `name_too_long`, `invalid_login`, `login_taken`,
+  `invalid_class`, `class_not_found`, `class_closed`, `duplicate_homeroom_in_file`.
+- `credentials` тек растау жауабында, бір-ақ рет беріледі. Парольдер серверде тек хеш түрінде сақталады.
+
+### Аккаунттар
+
+| Әдіс | Жол | Сұраныс | Жауап | Қате кодтары |
+|---|---|---|---|---|
+| GET | `/users` | — | `{"users": [account]}` (қазақ әліпбиі ретімен) | |
+| POST | `/users` | `{"last_name", "first_name", "patronymic"?, "login"?, "role"?}` | `201 {"user": account, "one_time_password"}` | `422 invalid_login`, `409 login_taken` |
+| PATCH | `/users/{id}` | `{"full_name"?, "is_active"?, "role"?}` | `{"user": account}` | `422 cannot_change_self` |
+| POST | `/users/{id}/reset-password` | — | `{"user": account, "one_time_password"}` | |
+
+`account`: `{"id", "full_name", "login", "role", "is_active", "must_change_password", "homeroom_classes"}`.
+
+- Әкімші өзін өшіре де, өз рөлін төмендете де алмайды.
+- Аккаунт өшірілгенде не паролі қайта берілгенде оның ашық сеанстары жабылады.

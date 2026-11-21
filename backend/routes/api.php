@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\Admin\AcademicYearController;
+use App\Http\Controllers\Admin\ImportController;
 use App\Http\Controllers\Admin\SchoolClassController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\StudentController;
+use App\Http\Controllers\Admin\TeacherController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
 
@@ -39,6 +41,14 @@ Route::middleware(['auth:sanctum', 'account'])->group(function () {
         Route::patch('students/{student}', [StudentController::class, 'update']);
         Route::post('students/{student}/transfer', [StudentController::class, 'transfer']);
         Route::post('students/{student}/withdraw', [StudentController::class, 'withdraw']);
+
+        Route::post('import/students', [ImportController::class, 'students']);
+        Route::post('import/teachers', [ImportController::class, 'teachers']);
+
+        Route::get('users', [TeacherController::class, 'index']);
+        Route::post('users', [TeacherController::class, 'store']);
+        Route::patch('users/{user}', [TeacherController::class, 'update']);
+        Route::post('users/{user}/reset-password', [TeacherController::class, 'resetPassword']);
 
         Route::get('settings', [SettingController::class, 'index']);
         Route::patch('settings', [SettingController::class, 'update']);

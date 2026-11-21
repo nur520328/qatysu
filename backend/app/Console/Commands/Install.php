@@ -27,7 +27,11 @@ use Throwable;
 #[Description('Ортаны тексеріп, кестелерді жаңартады; қажет болса алғашқы әкімшіні ашады')]
 class Install extends Command
 {
-    private const REQUIRED_EXTENSIONS = ['pdo_mysql', 'mbstring', 'openssl', 'ctype', 'fileinfo', 'tokenizer', 'xml', 'curl'];
+    /** Соңғы жолдағылар Excel файлдарын оқу мен жазуға керек. */
+    private const REQUIRED_EXTENSIONS = [
+        'pdo_mysql', 'mbstring', 'openssl', 'ctype', 'fileinfo', 'tokenizer', 'xml', 'curl',
+        'zip', 'zlib', 'dom', 'simplexml', 'xmlreader', 'xmlwriter', 'iconv',
+    ];
 
     /** @var list<string> Соңында шығатын егжей-тегжей жолдары. */
     private array $details = [];
