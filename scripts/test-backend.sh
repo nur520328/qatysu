@@ -11,7 +11,8 @@ if start < 0:
     print(raw[-1500:]); sys.exit(1)
 r = json.loads(raw[start:])
 print("backend: %s, %d/%d тест өтті, %d тексеру" % (r["result"], r["passed"], r["tests"], r["assertions"]))
-for f in r.get("failures", []):
-    print(" ✗ %s:%s  %s" % (f["test"].split("\\")[-1], f["line"], f["message"].splitlines()[0][:160]))
+for f in r.get("failures", []) + r.get("error_details", []):
+    message = (f.get("message") or "").strip().splitlines() or [""]
+    print(" ✗ %s:%s  %s" % (f.get("test", "").split("\\")[-1], f.get("line"), message[0][:200]))
 sys.exit(0 if r["result"] == "passed" else 1)
 '

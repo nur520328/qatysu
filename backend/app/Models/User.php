@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\Locale;
 use App\Enums\Role;
+use App\Support\KazakhSort;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -28,6 +29,9 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory;
 
+    /** Дерекқордағы әдепкі мәндермен бірдей. */
+    protected $attributes = ['locale' => 'kk', 'must_change_password' => true, 'is_active' => true];
+
     /** @return array<string, string> */
     protected function casts(): array
     {
@@ -38,6 +42,25 @@ class User extends Authenticatable
             'must_change_password' => 'boolean',
             'is_active' => 'boolean',
         ];
+    }
+
+    /**
+     * Ағымдағы оқу жылында жетекшілік ететін ашық сыныптардың атаулары.
+     *
+     * @return list<string>
+     */
+    public function homeroomClassNames(): array
+    {
+        $classes = SchoolClass::query()
+            ->where('homeroom_user_id', $this->id)
+            ->where('is_active', true)
+            ->whereHas('academicYear', fn ($q) => $q->where('is_current', true))
+            ->get();
+
+        return array_map(
+            static fn (SchoolClass $class): string => $class->name(),
+            KazakhSort::sort($classes, static fn (SchoolClass $c): array => [sprintf('%02d', $c->grade), $c->letter]),
+        );
     }
 
     public static function normalizeLogin(string $login): string
@@ -58,8 +81,7 @@ class User extends Authenticatable
             'role' => $this->role->value,
             'locale' => $this->locale->value,
             'must_change_password' => $this->must_change_password,
-            // Сыныптар кестесі 3-кезеңде пайда болады; оған дейін тізім бос.
-            'homeroom_classes' => [],
+            'homeroom_classes' => $this->homeroomClassNames(),
         ];
     }
 }

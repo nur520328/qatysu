@@ -120,9 +120,4 @@ class AuthController extends Controller
     {
         return response()->json(['user' => $user->toApi()]);
     }
-
-    private function error(string $code, int $status): JsonResponse
-    {
-        return response()->json(['code' => $code], $status);
-    }
 }
