@@ -165,6 +165,16 @@ sleep 1
 php artisan qatysu:restore "$BACKUP" --yes | grep -q "ҚАЛПЫНА КЕЛТІРІЛДІ" || fail "қалпына келтіру сәтсіз"
 [ "$(mariadb -uroot -N qatysu_smoke -e "select count(*) from classes")" = 2 ] || fail "қалпына келтіруден кейін сынып саны қате"
 [ "$(mariadb -uroot -N qatysu_smoke -e "select count(*) from students")" = 2 ] || fail "қалпына келтіруден кейін оқушы саны қате"
+# Сынақ дерегін тазалау: растаусыз тоқтайды; растаумен көшірме жасап, мектеп дерегін өшіреді, завуч қалады.
+sleep 1
+(php artisan qatysu:clear-data || true) | grep -q "ЕШТЕҢЕ ӨШІРІЛГЕН ЖОҚ" || fail "растаусыз тазалау тоқтамады"
+[ "$(mariadb -uroot -N qatysu_smoke -e "select count(*) from students")" = 2 ] || fail "растаусыз тазалау дерекке тиді"
+BEFORE_CLEAR="$(ls storage/app/backups/*.sql.gz | wc -l)"
+php artisan qatysu:clear-data --yes | grep -q "ТАЗАЛАНДЫ" || fail "тазалау сәтсіз"
+[ "$(ls storage/app/backups/*.sql.gz | wc -l)" = "$((BEFORE_CLEAR + 1))" ] || fail "тазалау алдында көшірме жасалмады"
+[ "$(mariadb -uroot -N qatysu_smoke -e "select (select count(*) from students) + (select count(*) from classes) + (select count(*) from attendance_records) + (select count(*) from users where role <> 'admin')")" = 0 ] || fail "тазалаудан кейін мектеп дерегі қалды"
+[ "$(mariadb -uroot -N qatysu_smoke -e "select count(*) from users where role = 'admin'")" -ge 1 ] || fail "тазалау завуч аккаунтын өшірді"
+[ "$(mariadb -uroot -N qatysu_smoke -e "select count(*) from academic_years")" = 1 ] || fail "тазалау оқу жылын өшірді"
 php artisan schedule:list | grep -q "qatysu:backup" || fail "түнгі көшірме кестеде жоқ"
 php artisan schedule:run >/dev/null || fail "schedule:run іске қосылмады"
 [ -s storage/logs/install-history.log ] || fail "орнату күнделігі жазылмады"
