@@ -206,3 +206,37 @@ Frontend пен backend арасындағы келісім. Екі жақ та 
 - `stale`: соңғы көшірме 26 сағаттан ескі не мүлдем жоқ.
 - `name` тек `qatysu-ЖЖЖЖААКК-ССММСС.sql.gz` пішімінде қабылданады. Жүктеп алу серверлік журналға жазылады (кім, қашан).
 - Қалпына келтіру API-де әдейі жоқ: тек `qatysu:restore` командасы, хостинг панелінен.
+
+## Кезекші коды (`/api/admin/duty-codes`, тек `admin`)
+
+| Әдіс | Жол | Сұраныс | Жауап | Қателер |
+|---|---|---|---|---|
+| GET | `/duty-codes` | — | `{"days": [day], "login_blocked": bool}` | |
+| POST | `/duty-codes` | `{"date": "ЖЖЖЖ-АА-КК", "shift": "morning"\|"afternoon"}` | `201 {"code": "6 цифр", "shift": shift}` | `422 date_not_issuable`, `422 shift_ended` |
+| DELETE | `/duty-codes/{id}` | — | `{"shift": shift}` | |
+
+- `day`: `{"date", "is_today", "shifts": [shift, shift]}`. Күндер: бүгін (оқу күні болса) және келесі оқу күні.
+- `shift`: `{"shift", "ends_at", "ended", "classes_total", "classes_done", "code": null | {"id", "issued_at", "issued_by", "devices"}}`.
+- Ашық код тек `POST` жауабында болады; дерекқорда хеші сақталады. Жаңа код сол күн мен сменаның ескі кодын жояды, сол кодпен кірген планшеттер шығарылады.
+- `login_blocked`: қате код теру әрекеті шектен асқан (5 минутта 40), кодпен кіру уақытша тоқтатылған.
+
+## Кезекші API (`/api/duty/…`)
+
+Аккаунтсыз; күндік кодпен кіреді. Сеанс cookie арқылы (кіру сияқты, CSRF тақырыбымен).
+
+| Әдіс | Жол | Сұраныс | Жауап | Қателер |
+|---|---|---|---|---|
+| POST | `/login` | `{"code": "6 цифр"}` | `200 state` | `422 invalid_duty_code`, `429 too_many_attempts`, `409 signed_in_as_user` |
+| POST | `/logout` | — | `204` | |
+| GET | `/session` | — | `200 state` | `401 duty_unauthenticated`, `401 duty_code_ended` |
+| GET | `/classes/{id}` | — | `200 roster` | `404 class_not_in_shift` |
+| PUT | `/classes/{id}/round` | `{"client_uuid", "absent_student_ids": [id], "revision"?: n, "client_time"?}` | `200 roster + {"stored_as": "round"\|"conflict", "kept_locked": [id]}` | `422 unknown_students`, `409 round_changed`, `404 class_not_in_shift` |
+
+- `state`: `{"date", "shift", "expires_at", "server_time", "device_number", "classes": [{"id", "name", "grade", "student_count", "round": null | round}]}`. Тек кодтың сменасындағы ашық сыныптар.
+- `round`: `{"client_uuid", "revision", "absent_count", "saved_at"}`.
+- `roster`: `{"class": {"id", "name"}, "round": null | round, "students": [{"id", "last_name", "first_name", "patronymic", "status": "present"\|"absent", "locked": bool}]}`. Себеп, түсініктеме, кешігу сияқты өрістер кезекшіге берілмейді.
+- Сақтау ережесі: аралау жоқ болса, жасалады (тізімдегі әр оқушыға жазба). Бар болса және `client_uuid` сол болса, түзетіледі (әр өзгеріс аудитке жазылады, `revision` өседі). `client_uuid` басқа болса, дерек `stored_as: "conflict"` ретінде бөлек сақталады, аралау өзгермейді.
+- Сол дерек қайта жіберілсе, ештеңе өзгермейді (байланыс үзілгенде қайталау қауіпсіз).
+- `revision` жіберіліп, сервердегіден өзгеше болса және дерек те өзгеше болса: `409 round_changed` (басқа планшет түзеген; тізімді қайта ашу керек).
+- `locked: true` оқушының белгісін кезекші өзгерте алмайды (мұғалім, жетекші не завуч тиген); өзгертуге әрекет жасалса, мән сақталып, нөмірі `kept_locked` тізімінде қайтады.
+- Қате код теру: бір мекенжайдан 5 минутта 5 рет; барлық мекенжайдан 5 минутта 40 рет.

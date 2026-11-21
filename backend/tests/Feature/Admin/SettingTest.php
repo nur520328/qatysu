@@ -13,6 +13,8 @@ class SettingTest extends AdminTestCase
             'max_lessons_per_shift' => 7,
             'homeroom_edit_days' => 14,
             'pending_reason_days' => 3,
+            'morning_shift_end' => 840,
+            'afternoon_shift_end' => 1200,
         ]]);
     }
 

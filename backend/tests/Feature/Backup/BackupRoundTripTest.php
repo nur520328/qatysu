@@ -46,7 +46,7 @@ class BackupRoundTripTest extends TestCase
         $before = $this->fingerprint();
 
         $backup = app(BackupService::class)->create();
-        $this->assertSame(14, $backup['tables']);
+        $this->assertSame(count(app(DatabaseDumper::class)->tables()), $backup['tables']);
         $this->assertGreaterThan(2500, $backup['rows']);
 
         // Көшірмеден кейінгі өзгерістер: дерек өшеді, өзгереді, артық кесте пайда болады.

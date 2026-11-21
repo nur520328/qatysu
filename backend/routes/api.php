@@ -2,12 +2,15 @@
 
 use App\Http\Controllers\Admin\AcademicYearController;
 use App\Http\Controllers\Admin\BackupController;
+use App\Http\Controllers\Admin\DutyCodeController;
 use App\Http\Controllers\Admin\ImportController;
 use App\Http\Controllers\Admin\SchoolClassController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\TeacherController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Duty\RoundController;
+use App\Http\Controllers\Duty\SessionController;
 use App\Http\Controllers\Teacher\HomeroomController;
 use Illuminate\Support\Facades\Route;
 
@@ -53,6 +56,10 @@ Route::middleware(['auth:sanctum', 'account'])->group(function () {
         Route::patch('users/{user}', [TeacherController::class, 'update']);
         Route::post('users/{user}/reset-password', [TeacherController::class, 'resetPassword']);
 
+        Route::get('duty-codes', [DutyCodeController::class, 'index']);
+        Route::post('duty-codes', [DutyCodeController::class, 'store']);
+        Route::delete('duty-codes/{code}', [DutyCodeController::class, 'destroy']);
+
         Route::get('backups', [BackupController::class, 'index']);
         Route::post('backups', [BackupController::class, 'store']);
         Route::get('backups/{name}/download', [BackupController::class, 'download']);
@@ -63,5 +70,17 @@ Route::middleware(['auth:sanctum', 'account'])->group(function () {
 
     Route::middleware('role:admin,teacher')->prefix('teacher')->group(function () {
         Route::get('homeroom', [HomeroomController::class, 'index']);
+    });
+});
+
+// Кезекші оқушы: аккаунты жоқ, күндік кодпен кіреді (docs/кезең-4-жоспар.md).
+Route::prefix('duty')->group(function () {
+    Route::post('login', [SessionController::class, 'login']);
+    Route::post('logout', [SessionController::class, 'logout']);
+
+    Route::middleware('duty')->group(function () {
+        Route::get('session', [SessionController::class, 'show']);
+        Route::get('classes/{class}', [RoundController::class, 'show']);
+        Route::put('classes/{class}/round', [RoundController::class, 'save']);
     });
 });

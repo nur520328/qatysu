@@ -2,13 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Enums\Shift;
 use App\Models\SchoolClass;
 use App\Models\User;
+use App\Services\Duty\DutyCodeService;
 use Carbon\CarbonImmutable;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -49,6 +52,33 @@ class ScaleTest extends TestCase
 
         foreach (['classes' => $classes, 'users' => $users, 'roster' => $roster, 'homeroom' => $homeroom] as $name => $result) {
             $this->assertLessThanOrEqual(10, $result['queries'], "$name: сұраныс тым көп ({$result['queries']})");
+            $this->assertLessThan(500, $result['ms'], "$name: тым баяу ({$result['ms']} мс)");
+        }
+    }
+
+    public function test_duty_round_stays_cheap_with_full_school_data(): void
+    {
+        $this->travelTo(CarbonImmutable::create(2026, 11, 20, 8, 10));
+        $this->seed(DemoSeeder::class);
+        $admin = User::factory()->admin()->create();
+        [, $plain] = app(DutyCodeService::class)->issue(CarbonImmutable::today(), Shift::Morning, $admin);
+
+        $login = $this->postJson('/api/duty/login', ['code' => $plain])->assertOk();
+        $this->withCredentials()->withCookie(config('session.cookie'), $login->getCookie(config('session.cookie'))->getValue());
+        $this->assertCount(25, $login->json('classes')); // 5, 9, 10, 11-сыныптар
+
+        $class = SchoolClass::query()->where('grade', 9)->where('letter', 'Ж')->firstOrFail();
+        $roster = $this->measure(fn () => $this->getJson("/api/duty/classes/{$class->id}")->assertOk());
+        $absent = array_slice(array_column($roster['response']->json('students'), 'id'), 0, 3);
+        $body = ['client_uuid' => (string) Str::uuid(), 'absent_student_ids' => $absent];
+
+        $save = $this->measure(fn () => $this->putJson("/api/duty/classes/{$class->id}/round", $body)->assertOk());
+        $edit = $this->measure(fn () => $this->putJson("/api/duty/classes/{$class->id}/round", ['absent_student_ids' => [$absent[0]], 'revision' => 1] + $body)->assertOk());
+        $state = $this->measure(fn () => $this->getJson('/api/duty/session')->assertOk());
+        $state['response']->assertJsonPath('classes.'.array_search($class->id, array_column($state['response']->json('classes'), 'id'), true).'.round.absent_count', 1);
+
+        foreach (['roster' => [$roster, 12], 'save' => [$save, 20], 'edit' => [$edit, 25], 'state' => [$state, 12]] as $name => [$result, $limit]) {
+            $this->assertLessThanOrEqual($limit, $result['queries'], "$name: сұраныс тым көп ({$result['queries']})");
             $this->assertLessThan(500, $result['ms'], "$name: тым баяу ({$result['ms']} мс)");
         }
     }

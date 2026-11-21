@@ -48,4 +48,16 @@ class CalendarService
             ->where('is_school_day', true)
             ->exists();
     }
+
+    /** Көрсетілген күннен кейінгі бірінші оқу күні (күнтізбеде жоқ болса null). */
+    public function nextSchoolDay(CarbonImmutable $after): ?CarbonImmutable
+    {
+        $date = CalendarDay::query()
+            ->whereDate('date', '>', $after->toDateString())
+            ->where('is_school_day', true)
+            ->orderBy('date')
+            ->value('date');
+
+        return $date === null ? null : CarbonImmutable::parse($date)->startOfDay();
+    }
 }
