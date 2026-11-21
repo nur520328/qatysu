@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { adminApi } from '../../api/admin'
 import type { Settings } from '../../api/admin'
+import { dayMonthTime } from '../../lib/dates'
 import { useErrorText } from '../../lib/errors'
 import { useLoad } from '../../lib/useLoad'
 
@@ -75,6 +76,85 @@ function SettingsForm({ initial }: { initial: Settings }) {
         {saved && <p className="note" role="status">{t('settings.saved')}</p>}
         <button className="btn btn--strong" type="submit" disabled={busy}>{busy ? t('common.saving') : t('common.save')}</button>
       </form>
+      <BackupPanel />
+    </section>
+  )
+}
+
+function BackupPanel() {
+  const { t, i18n } = useTranslation()
+  const errorText = useErrorText()
+  const fetcher = useCallback(() => adminApi.backups(), [])
+  const { data, error: loadError, reload } = useLoad(fetcher)
+  const [busy, setBusy] = useState(false)
+  const [created, setCreated] = useState(false)
+  const [actionError, setError] = useState<string | null>(null)
+  const error = actionError ?? (loadError === null ? null : errorText(loadError))
+  const when = (iso: string) => dayMonthTime(iso, i18n.language)
+
+  async function create() {
+    setBusy(true)
+    setCreated(false)
+    setError(null)
+    try {
+      await adminApi.createBackup()
+      await reload()
+      setCreated(true)
+    } catch (caught) {
+      setError(errorText(caught))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="panel form" aria-label={t('backup.title')}>
+      <h2 className="panel__title">{t('backup.title')}</h2>
+      <p className="muted">{t('backup.lead')}</p>
+      {data !== undefined && (
+        <>
+          {data.stale && <p className="alert" role="alert">{t('backup.stale')}</p>}
+          <p className="panel__lead">{data.last_at === null ? t('backup.none') : t('backup.last', { when: when(data.last_at) })}</p>
+        </>
+      )}
+      {error !== null && <p className="alert" role="alert">{error}</p>}
+      {created && <p className="note" role="status">{t('backup.created')}</p>}
+      <button className="btn btn--strong" type="button" disabled={busy} onClick={() => void create()}>
+        {busy ? t('backup.creating') : t('backup.create')}
+      </button>
+      {data !== undefined && data.backups.length > 0 && (
+        <>
+          <p className="muted">{t('backup.downloadNote')}</p>
+          <div className="tablewrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th scope="col">{t('backup.when')}</th>
+                  <th scope="col" className="num">{t('backup.rows')}</th>
+                  <th scope="col" className="num">{t('backup.size')}</th>
+                  <th scope="col">{t('backup.download')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.backups.map((backup) => (
+                  <tr key={backup.name}>
+                    <th scope="row">{when(backup.created_at)}</th>
+                    <td className="num">{backup.rows}</td>
+                    <td className="num">{t('backup.sizeKb', { kb: Math.max(1, Math.round(backup.size / 1024)) })}</td>
+                    <td>
+                      <a className="back" href={adminApi.backupUrl(backup.name)} download
+                        aria-label={t('backup.downloadName', { when: when(backup.created_at) })}>
+                        {t('backup.download')}
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+      <p className="muted">{t('backup.restoreNote')}</p>
     </section>
   )
 }

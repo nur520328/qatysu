@@ -30,7 +30,11 @@ const student: Student = { id: 40, last_name: 'Сынақов', first_name: 'Б�
 const ok = (body: unknown): Handler => () => ({ status: 200, body })
 
 function renderAt(path: string, user: User, routes: Record<string, Handler>) {
-  const calls = mockServer({ 'GET /api/auth/me': ok({ user }), ...routes })
+  const calls = mockServer({
+    'GET /api/auth/me': ok({ user }),
+    'GET /api/admin/backups': ok({ last_at: '2026-11-19T21:30:00+00:00', stale: false, backups: [] }),
+    ...routes,
+  })
   render(
     <MemoryRouter initialEntries={[path]}>
       <AuthProvider>
@@ -272,6 +276,52 @@ describe('күнтізбе мен баптау', () => {
 
     expect(await screen.findByRole('status')).toHaveTextContent('Сақталды.')
     expect(calls.find((c) => c.key.startsWith('PATCH'))?.body).toEqual({ ...settings, max_lessons_per_shift: 8 })
+  })
+})
+
+describe('сақтық көшірме', () => {
+  const backup = { name: 'qatysu-20261120-023000.sql.gz', size: 22388, created_at: '2026-11-19T21:30:00+00:00', version: '0.0.3.7', tables: 14, rows: 2649 }
+  const settings = { max_lessons_per_shift: 7, homeroom_edit_days: 14, pending_reason_days: 3 }
+
+  it('баптау бетінде соңғы көшірме Қазақстан уақытымен көрінеді, қолмен жасауға және жүктеуге болады', async () => {
+    const calls = renderAt('/admin/settings', admin, {
+      'GET /api/admin/settings': ok({ settings }),
+      'GET /api/admin/backups': ok({ last_at: backup.created_at, stale: false, backups: [backup] }),
+      'POST /api/admin/backups': () => ({ status: 201, body: { backup } }),
+    })
+    const user = userEvent.setup()
+
+    const panel = await screen.findByRole('region', { name: 'Сақтық көшірме' })
+    expect(await within(panel).findByText('Соңғы көшірме: 20 қараша, 02:30')).toBeInTheDocument()
+    expect(within(panel).getByRole('link', { name: '20 қараша, 02:30 күнгі көшірмені жүктеп алу' }))
+      .toHaveAttribute('href', '/api/admin/backups/qatysu-20261120-023000.sql.gz/download')
+    expect(within(panel).getByText('22 КБ')).toBeInTheDocument()
+
+    await user.click(within(panel).getByRole('button', { name: 'Қазір көшірме жасау' }))
+    expect(await within(panel).findByRole('status')).toHaveTextContent('Көшірме жасалды.')
+    expect(calls.filter((c) => c.key === 'POST /api/admin/backups')).toHaveLength(1)
+  })
+
+  it('көшірме ескірсе, завуч кез келген бетте ескерту көреді', async () => {
+    renderAt('/admin/classes', admin, {
+      'GET /api/admin/classes': ok({ year, classes: [] }),
+      'GET /api/admin/backups': ok({ last_at: null, stale: true, backups: [] }),
+    })
+
+    const banner = await screen.findByText(/соңғы тәулікте сақтық көшірме жасалмаған/)
+    expect(within(banner).getByRole('link', { name: 'Баптауды ашу' })).toHaveAttribute('href', '/admin/settings')
+  })
+
+  it('күндік шек таусылса, түсінікті хабар шығады', async () => {
+    renderAt('/admin/settings', admin, {
+      'GET /api/admin/settings': ok({ settings }),
+      'POST /api/admin/backups': () => ({ status: 429, body: { code: 'backup_limit_reached' } }),
+    })
+    const user = userEvent.setup()
+
+    const panel = await screen.findByRole('region', { name: 'Сақтық көшірме' })
+    await user.click(within(panel).getByRole('button', { name: 'Қазір көшірме жасау' }))
+    expect(await within(panel).findByRole('alert')).toHaveTextContent('Бүгін көшірме жеткілікті жасалды.')
   })
 })
 

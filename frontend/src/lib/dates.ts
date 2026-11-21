@@ -56,3 +56,10 @@ export function weekdayIndex(value: string): number {
 export function weekdayNames(language: string): string[] {
   return WEEKDAYS[lang(language)]
 }
+
+/** Серверден келген уақытты «21 қараша, 02:30» түрінде, Қазақстан уақытымен (UTC+5) көрсетеді. */
+export function dayMonthTime(iso: string, language: string): string {
+  // Мектеп те, сервер де бір уақыт белдеуінде; браузердің белдеуі басқа болса да, уақыт өзгермеуі тиіс.
+  const local = new Date(new Date(iso).getTime() + 5 * 3600 * 1000).toISOString()
+  return `${dayMonth(local.slice(0, 10), language)}, ${local.slice(11, 16)}`
+}

@@ -1,7 +1,10 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { useCallback } from 'react'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { adminApi } from '../../api/admin'
 import { useAuth } from '../../auth/context'
 import { Shell } from '../../components/Shell'
+import { useLoad } from '../../lib/useLoad'
 
 const LINKS = [
   { to: '/admin/classes', key: 'nav.classes' },
@@ -14,6 +17,11 @@ const LINKS = [
 export function AdminLayout() {
   const { t } = useTranslation()
   const { logout } = useAuth()
+  const { pathname } = useLocation()
+  // Түнгі көшірме жасалмай қалса, завуч оны қай бетте жүрсе де көруі тиіс (баптау бетінде толық нұсқасы тұр).
+  const fetcher = useCallback(() => adminApi.backups(), [])
+  const { data: backups } = useLoad(fetcher)
+  const warn = backups?.stale === true && pathname !== '/admin/settings'
 
   return (
     <Shell
@@ -32,6 +40,11 @@ export function AdminLayout() {
             </NavLink>
           ))}
         </nav>
+        {warn && (
+          <p className="alert" role="alert">
+            {t('backup.banner')} <Link to="/admin/settings">{t('backup.bannerLink')}</Link>
+          </p>
+        )}
         <Outlet />
       </div>
     </Shell>

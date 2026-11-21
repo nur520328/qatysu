@@ -1,8 +1,9 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
+// Жоспарлы жұмыстар. Хостинг панелінде минут сайын `php artisan schedule:run` іске қосылады
+// (docs/орналастыру.md). Уақыт — қосымшаның уақыт белдеуі бойынша (Asia/Almaty).
+
+// Түнгі сақтық көшірме: сабақ жоқ, сайтта ешкім жұмыс істемейтін уақыт.
+Schedule::command('qatysu:backup')->dailyAt('02:30')->withoutOverlapping();

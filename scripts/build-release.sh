@@ -25,6 +25,7 @@ tar -C "$ROOT/backend" \
   --exclude='./.gitattributes' --exclude='./pint.json' \
   --exclude='./.gitignore' --exclude='./.npmrc' --exclude='./.styleci.yml' \
   --exclude='./storage/logs/*.log' \
+  --exclude='./storage/app/backups' --exclude='./storage/app/install-marker.json' \
   --exclude='./storage/framework/cache/data/*' \
   --exclude='./storage/framework/sessions/*' \
   --exclude='./storage/framework/views/*' \
@@ -54,7 +55,7 @@ cp -R "$ROOT/frontend/dist/." "$STAGE/public/"
 cp "$ROOT/VERSION" "$STAGE/VERSION"
 
 # Қауіпсіздік тексерісі: архивке құпия не артық файл түспеуі тиіс.
-for forbidden in .env tests phpunit.xml node_modules; do
+for forbidden in .env tests phpunit.xml node_modules storage/app/backups storage/app/install-marker.json storage/logs/install-history.log; do
   if [ -e "$STAGE/$forbidden" ]; then
     echo "ҚАТЕ: архивте болмауы тиіс: $forbidden" >&2
     exit 1

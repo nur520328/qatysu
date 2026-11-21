@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AcademicYearController;
+use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\ImportController;
 use App\Http\Controllers\Admin\SchoolClassController;
 use App\Http\Controllers\Admin\SettingController;
@@ -51,6 +52,10 @@ Route::middleware(['auth:sanctum', 'account'])->group(function () {
         Route::post('users', [TeacherController::class, 'store']);
         Route::patch('users/{user}', [TeacherController::class, 'update']);
         Route::post('users/{user}/reset-password', [TeacherController::class, 'resetPassword']);
+
+        Route::get('backups', [BackupController::class, 'index']);
+        Route::post('backups', [BackupController::class, 'store']);
+        Route::get('backups/{name}/download', [BackupController::class, 'download']);
 
         Route::get('settings', [SettingController::class, 'index']);
         Route::patch('settings', [SettingController::class, 'update']);

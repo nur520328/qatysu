@@ -97,6 +97,23 @@ upload -F "file=@$WORK/mugalimder.xlsx" --form-string "digest=$D" "$BASE/api/adm
 curl -s -b "$JAR" -H 'Accept: application/json' -H "Origin: $BASE" "$BASE/api/admin/classes" | grep -q '"student_count":2' || fail "сыныпта оқушы саны қате"
 [ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/templates/mugalimder-ulgi.xlsx")" = 200 ] || fail "мұғалімдер үлгі файлы берілмеді"
 
+echo "== Сақтық көшірме: жасау, жүктеу, қалпына келтіру, кесте"
+php artisan qatysu:backup | grep -q "КӨШІРМЕ ЖАСАЛДЫ" || fail "көшірме жасалмады"
+BACKUP="$(curl -s -b "$JAR" -H 'Accept: application/json' -H "Origin: $BASE" "$BASE/api/admin/backups" | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['stale'] is False; print(d['backups'][0]['name'])")" || fail "көшірмелер тізімі қате"
+curl -s -b "$JAR" -H "Origin: $BASE" "$BASE/api/admin/backups/$BACKUP/download" | gunzip -c | head -1 | grep -q "^-- qatysu-backup " || fail "көшірме жүктелмеді"
+[ "$(curl -s -o /dev/null -w '%{http_code}' -H 'Accept: application/json' "$BASE/api/admin/backups/$BACKUP/download")" = 401 ] || fail "көшірме кірмеген адамға ашық"
+[ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/storage/app/backups/$BACKUP")" != 200 ] || fail "көшірме файлы тікелей мекенжаймен ашылды"
+[ "$(json POST /api/admin/classes/bulk '{"grade":8,"letters":["А"],"shift":"afternoon"}')" = 201 ] || fail "сынып ашылмады"
+sleep 1
+# Растаусыз команда әдейі қате кодымен аяқталады.
+(php artisan qatysu:restore "$BACKUP" || true) | grep -q "ЕШТЕҢЕ ӨЗГЕРТІЛГЕН ЖОҚ" || fail "растаусыз қалпына келтіру тоқтамады"
+php artisan qatysu:restore "$BACKUP" --yes | grep -q "ҚАЛПЫНА КЕЛТІРІЛДІ" || fail "қалпына келтіру сәтсіз"
+[ "$(mariadb -uroot -N qatysu_smoke -e "select count(*) from classes")" = 2 ] || fail "қалпына келтіруден кейін сынып саны қате"
+[ "$(mariadb -uroot -N qatysu_smoke -e "select count(*) from students")" = 2 ] || fail "қалпына келтіруден кейін оқушы саны қате"
+php artisan schedule:list | grep -q "qatysu:backup" || fail "түнгі көшірме кестеде жоқ"
+php artisan schedule:run >/dev/null || fail "schedule:run іске қосылмады"
+[ -s storage/logs/install-history.log ] || fail "орнату күнделігі жазылмады"
+
 grep -q "production.ERROR" storage/logs/*.log 2>/dev/null && fail "серверлік журналда қате бар" || true
 # Журнал тексерілгеннен кейін: бұл команда әдейі қатемен аяқталуы тиіс.
 php artisan db:seed --class=DemoSeeder --force >/dev/null 2>&1 && fail "жасанды дерек өндірістік ортада жүктелді" || true

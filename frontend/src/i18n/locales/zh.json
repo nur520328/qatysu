@@ -96,7 +96,9 @@
     "login_taken": "该账号已被占用。",
     "duplicate_homeroom_in_file": "文件中该班级已指定其他班主任。",
     "homeroom_taken": "该班级已有班主任，未作更改。",
-    "cannot_change_self": "不能停用自己的账号或更改自己的角色。"
+    "cannot_change_self": "不能停用自己的账号或更改自己的角色。",
+    "backup_limit_reached": "今天的备份次数已够。请明天再试。",
+    "backup_failed": "备份失败。请告知平台安装人员。"
   },
   "calendar": {
     "title": "校历",
@@ -243,5 +245,25 @@
     "pendingDaysHint": "从学生缺勤当天算起。",
     "range": "范围：{{min}} 到 {{max}}。",
     "saved": "已保存。"
+  },
+  "backup": {
+    "title": "数据备份",
+    "lead": "平台每天凌晨 02:30 自动备份数据库，并保留 30 天。",
+    "last": "最近一次备份：{{when}}",
+    "none": "还没有任何备份。",
+    "stale": "最近一天内没有生成备份。请现在手动备份，并告知平台安装人员。",
+    "create": "立即备份",
+    "creating": "正在备份…",
+    "created": "备份已完成。",
+    "download": "下载",
+    "downloadName": "下载 {{when}} 的备份",
+    "downloadNote": "请每周把最新备份下载到自己的电脑：如果服务器出故障，这就是唯一的副本。文件中有全部学生和教师的数据，请勿交给他人，也不要留在公用电脑上。",
+    "when": "时间",
+    "size": "大小",
+    "rows": "记录数",
+    "sizeKb": "{{kb}} KB",
+    "restoreNote": "网站上不能从备份恢复：由平台安装人员在主机面板中执行。",
+    "banner": "请注意：最近一天内没有生成备份。",
+    "bannerLink": "打开设置"
   }
 }

@@ -102,7 +102,26 @@ function fileForm(file: File, digest?: string): FormData {
   return form
 }
 
+export interface Backup {
+  name: string
+  size: number
+  created_at: string
+  version: string
+  tables: number
+  rows: number
+}
+
+export interface BackupList {
+  last_at: string | null
+  stale: boolean
+  backups: Backup[]
+}
+
 export const adminApi = {
+  backups: () => request<BackupList>('GET', '/admin/backups'),
+  createBackup: () => request<{ backup: Backup }>('POST', '/admin/backups'),
+  backupUrl: (name: string) => `/api/admin/backups/${encodeURIComponent(name)}/download`,
+
   years: () => request<{ years: Year[] }>('GET', '/admin/academic-years').then((r) => r.years),
   createYear: (data: Pick<Year, 'name' | 'start_date' | 'end_date'>) =>
     request<{ year: Year }>('POST', '/admin/academic-years', data).then((r) => r.year),

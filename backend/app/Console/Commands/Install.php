@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Enums\Role;
 use App\Models\User;
+use App\Services\Backup\BackupService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -56,6 +57,8 @@ class Install extends Command
         // 2026-11-21 күні хостингте жаңарту кезінде дерекқор күтпеген жерден бос болып шықты,
         // ал команда үнсіз жаңа бос жүйе құрды. Енді мұндайда тоқтап, адамнан растау сұрайды.
         if ($this->databaseUnexpectedlyEmpty() && ! $this->option('accept-empty-database')) {
+            $this->history($this->databaseState(), 0, 'stopped_empty_database');
+
             return $this->finish(false, [
                 'ТОҚТАТЫЛДЫ: бұл жерде жүйе бұрын орнатылған ('.$this->marker()['installed_at'].'), бірақ дерекқор бос.',
                 'Дерек жоғалған болуы мүмкін. Ештеңе өзгертілген жоқ. Сақтық көшірмеден қалпына келтіріңіз не Claude-қа хабарлаңыз.',
@@ -66,6 +69,24 @@ class Install extends Command
         $this->alignDatabaseCharset();
 
         $before = $this->migrationCount();
+        $state = $this->databaseState();
+
+        // Қызыл сызық: сақтық көшірмесіз кесте өзгертілмейді. Дерегі бар дерекқорда күтіп тұрған
+        // миграция болса, алдымен көшірме жасалады; ол сәтсіз болса, жаңарту тоқтайды.
+        if ($state['tables'] > 0 && $this->hasPendingMigrations()) {
+            try {
+                $backup = app(BackupService::class)->create();
+                $this->details[] = 'Жаңарту алдындағы көшірме: '.$backup['name'].'.';
+            } catch (Throwable $e) {
+                $this->history($state, 0, 'backup_failed');
+
+                return $this->finish(false, [
+                    'ҚАТЕ: жаңарту алдында сақтық көшірме жасалмады, сондықтан кестелер өзгертілген жоқ.',
+                    mb_substr($e->getMessage(), 0, 160),
+                ]);
+            }
+        }
+
         Artisan::call('migrate', ['--force' => true]);
         $ran = $this->migrationCount() - $before;
         $this->details[] = $ran > 0 ? "Кестелер жаңартылды ({$ran} миграция)." : 'Кестелер өзгеріссіз.';
@@ -84,6 +105,7 @@ class Install extends Command
         if ($ok) {
             $this->writeMarker();
         }
+        $this->history($state, $ran, $ok ? 'ok' : 'no_admin');
         $this->details[] = $this->telegramStatus();
 
         return $this->finish($ok, $adminLines);
@@ -202,6 +224,49 @@ class Install extends Command
         }
 
         return ! Schema::hasTable('users') || ! User::query()->exists();
+    }
+
+    /**
+     * Іске қосу сәтіндегі дерекқор күйі. 2026-11-21 күнгі оқиғада дәл осы дерек жетпеді:
+     * дерекқор қашан және қай күйде бос болғанын ешбір журнал көрсетпеді.
+     *
+     * @return array{tables: int, users: int|null, charset: string}
+     */
+    private function databaseState(): array
+    {
+        return [
+            'tables' => (int) DB::selectOne("select count(*) as n from information_schema.tables where table_schema = database() and table_type = 'BASE TABLE'")->n,
+            'users' => Schema::hasTable('users') ? User::query()->count() : null,
+            'charset' => (string) DB::selectOne('select @@character_set_database as c')->c,
+        ];
+    }
+
+    public static function historyPath(): string
+    {
+        return storage_path('logs/install-history.log');
+    }
+
+    /** @param  array{tables: int, users: int|null, charset: string}  $state */
+    private function history(array $state, int $migrationsRan, string $result): void
+    {
+        $line = json_encode([
+            'at' => now()->toIso8601String(),
+            'version' => (string) config('app.version'),
+            'database' => (string) DB::connection()->getDatabaseName(),
+            'before' => $state,
+            'migrations_ran' => $migrationsRan,
+            'result' => $result,
+        ], JSON_UNESCAPED_UNICODE);
+        @file_put_contents(self::historyPath(), $line."\n", FILE_APPEND | LOCK_EX);
+    }
+
+    private function hasPendingMigrations(): bool
+    {
+        $migrator = app('migrator');
+        $files = array_keys($migrator->getMigrationFiles($migrator->paths() ?: [database_path('migrations')]));
+        $ran = $migrator->repositoryExists() ? $migrator->getRepository()->getRan() : [];
+
+        return array_diff($files, $ran) !== [];
     }
 
     private function migrationCount(): int
