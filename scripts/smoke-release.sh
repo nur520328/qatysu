@@ -31,7 +31,7 @@ PASSWORD="$(sed -n 's/^Бір реттік пароль: //p' "$WORK/install.log
 [ -n "$PASSWORD" ] || { echo "ҚАТЕ: бір реттік пароль шықпады" >&2; exit 1; }
 
 echo "== Орнату командасы (қайталау қауіпсіз болуы тиіс)"
-php artisan qatysu:install | grep -E "Әкімші аккаунты бар|сәтті"
+php artisan qatysu:install | grep -E "ОРНАТУ СӘТТІ|Әкімші аккаунты бар"
 
 php artisan serve --host=127.0.0.1 --port="$PORT" >"$WORK/server.log" 2>&1 &
 trap 'pkill -f "127.0.0.1:$PORT" 2>/dev/null || true; rm -rf "$WORK"' EXIT
@@ -58,6 +58,14 @@ done
 code "$BASE/sanctum/csrf-cookie" >/dev/null
 BODY="$(python3 -c "import json,sys; print(json.dumps({'login':'zavuch','password':sys.argv[1]}))" "$PASSWORD")"
 [ "$(code -X POST -H 'Content-Type: application/json' -H "X-XSRF-TOKEN: $(xsrf)" -d "$BODY" "$BASE/api/auth/login")" = 200 ] || fail "бір реттік парольмен кіру сәтсіз"
+
+echo "== Парольді қайта беру"
+NEW="$(php artisan qatysu:reset-password zavuch | sed -n 's/^Бір реттік пароль: //p')"
+[ -n "$NEW" ] && [ "$NEW" != "$PASSWORD" ] || fail "жаңа бір реттік пароль шықпады"
+[ "$(code "$BASE/api/auth/me")" = 401 ] || fail "пароль қайта берілгеннен кейін ескі сеанс жабылмады"
+BODY="$(python3 -c "import json,sys; print(json.dumps({'login':'zavuch','password':sys.argv[1]}))" "$NEW")"
+code "$BASE/sanctum/csrf-cookie" >/dev/null
+[ "$(code -X POST -H 'Content-Type: application/json' -H "X-XSRF-TOKEN: $(xsrf)" -d "$BODY" "$BASE/api/auth/login")" = 200 ] || fail "жаңа бір реттік парольмен кіру сәтсіз"
 curl -s -b "$JAR" -H 'Accept: application/json' -H "Origin: $BASE" "$BASE/api/auth/me" | grep -q '"must_change_password":true' || fail "кіргеннен кейін пайдаланушы қайтпады"
 
 grep -q "production.ERROR" storage/logs/*.log 2>/dev/null && fail "серверлік журналда қате бар" || true

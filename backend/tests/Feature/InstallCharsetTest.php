@@ -50,7 +50,7 @@ class InstallCharsetTest extends TestCase
         [$exit, $output] = $this->install();
 
         $this->assertSame(0, $exit, $output);
-        $this->assertStringContainsString('utf8mb4-ке ауыстырылды', $output);
+        $this->assertStringContainsString('utf8mb3 → utf8mb4', $output);
         $this->assertSame('utf8mb4', DB::selectOne('select @@character_set_database as c')->c);
 
         // utf8mb3 сақтай алмайтын таңбалар да (4 байттық) бүтін сақталады.

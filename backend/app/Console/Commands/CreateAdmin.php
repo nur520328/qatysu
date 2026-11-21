@@ -4,10 +4,10 @@ namespace App\Console\Commands;
 
 use App\Enums\Role;
 use App\Models\User;
+use App\Support\OneTimePassword;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
-use Illuminate\Support\Str;
 
 /**
  * Жаңа орнатылған серверде алғашқы әкімшіні ашады.
@@ -25,19 +25,17 @@ class CreateAdmin extends Command
         $fullName = trim((string) $this->argument('full_name'));
 
         if ($login === '' || $fullName === '' || mb_strlen($login) > 60 || mb_strlen($fullName) > 150) {
-            $this->error('Логин не аты-жөні бос немесе тым ұзын.');
+            $this->line('ҚАТЕ: логин не аты-жөні бос немесе тым ұзын.');
 
             return self::FAILURE;
         }
         if (User::query()->where('login', $login)->exists()) {
-            $this->error("«{$login}» логині бос емес.");
+            $this->line("ҚАТЕ: «{$login}» логині бос емес.");
 
             return self::FAILURE;
         }
 
-        // 12 таңба: 10 әріп пен 2 сан, яғни пароль ережесіне әрдайым сай келеді.
-        $password = Str::password(10, letters: true, numbers: false, symbols: false)
-            .random_int(10, 99);
+        $password = OneTimePassword::generate();
 
         User::query()->create([
             'full_name' => $fullName,
@@ -47,9 +45,9 @@ class CreateAdmin extends Command
             'must_change_password' => true,
         ]);
 
-        $this->info("Әкімші ашылды: {$login}");
+        // Пароль бірінші жолда: хостинг панелі шығыстың басын ғана көрсетеді.
         $this->line("Бір реттік пароль: {$password}");
-        $this->line('Алғаш кіргенде пароль ауыстырылады. Осы шығысты сақтамаңыз.');
+        $this->line("Әкімші ашылды: {$login}. Алғаш кіргенде пароль ауыстырылады.");
 
         return self::SUCCESS;
     }

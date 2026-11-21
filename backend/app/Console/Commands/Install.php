@@ -10,6 +10,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 use Throwable;
 
 /**
@@ -17,6 +18,10 @@ use Throwable;
  * жоспарлаушыдан іске қосылады және бірнеше рет қауіпсіз қайталанады:
  * ортаны тексереді, шифрлау кілтін (жоқ болса) жасайды, дерекқор кестелерін жаңартады,
  * әкімші жоқ болса алғашқысын ашады.
+ *
+ * Шығыс әдейі қысқа: хостинг панелі оның алғашқы ~450 таңбасын ғана көрсетеді
+ * (2026-11-21 күні Hoster.kz-те анықталды). Сондықтан ең маңызды жолдар — нәтиже мен
+ * бір реттік пароль — ең басында тұрады, ал егжей-тегжей соңында.
  */
 #[Signature('qatysu:install {login? : Алғашқы әкімшінің логині} {full_name? : Оның аты-жөні (көрсетілмесе «Әкімші»)}')]
 #[Description('Ортаны тексеріп, кестелерді жаңартады; қажет болса алғашқы әкімшіні ашады')]
@@ -24,51 +29,62 @@ class Install extends Command
 {
     private const REQUIRED_EXTENSIONS = ['pdo_mysql', 'mbstring', 'openssl', 'ctype', 'fileinfo', 'tokenizer', 'xml', 'curl'];
 
+    /** @var list<string> Соңында шығатын егжей-тегжей жолдары. */
+    private array $details = [];
+
     public function handle(): int
     {
-        $this->line('=== Қатысу платформасы: орнату ===');
-        $this->line('Нұсқа: '.config('app.version'));
-        $this->line('PHP: '.PHP_VERSION);
+        $this->details = [];
 
         $problems = $this->checkEnvironment();
         if ($problems !== []) {
-            foreach ($problems as $problem) {
-                $this->error('ҚАТЕ: '.$problem);
-            }
-            $this->line('Жоғарыдағы қателер түзелмейінше ештеңе өзгертілген жоқ.');
+            $lines = array_map(static fn (string $problem): string => 'ҚАТЕ: '.$problem, $problems);
+            $lines[] = 'Ештеңе өзгертілген жоқ.';
 
-            return self::FAILURE;
+            return $this->finish(false, $lines);
         }
 
         if (config('app.key') === null || config('app.key') === '') {
             Artisan::call('key:generate', ['--force' => true]);
-            $this->line('Шифрлау кілті жасалып, .env файлына жазылды.');
-        } else {
-            $this->line('Шифрлау кілті бар, өзгертілген жоқ.');
+            $this->details[] = 'Шифрлау кілті жасалды.';
         }
 
         $this->alignDatabaseCharset();
 
+        $before = $this->migrationCount();
         Artisan::call('migrate', ['--force' => true]);
-        $this->line('Дерекқор кестелері: '.trim(preg_replace('/\s+/', ' ', Artisan::output())));
+        $ran = $this->migrationCount() - $before;
+        $this->details[] = $ran > 0 ? "Кестелер жаңартылды ({$ran} миграция)." : 'Кестелер өзгеріссіз.';
 
         $wrongTables = $this->tablesWithWrongCharset();
         if ($wrongTables !== []) {
-            $this->error('ҚАТЕ: мына кестелердің кодталуы utf8mb4 емес: '.implode(', ', $wrongTables)
-                .'. Қазақ әріптері дұрыс сақталмауы мүмкін. Claude-қа хабарлаңыз.');
-
-            return self::FAILURE;
+            return $this->finish(false, [
+                'ҚАТЕ: кестелердің кодталуы utf8mb4 емес: '.implode(', ', $wrongTables).'. Claude-қа хабарлаңыз.',
+            ]);
         }
-        $this->line('Кестелердің кодталуы: utf8mb4 (қазақ, орыс, қытай әріптеріне жарайды).');
 
         // Кілт пен баптау өзгерген болуы мүмкін; ескі кэш қалмауы тиіс.
         Artisan::call('optimize:clear');
 
-        $result = $this->ensureAdmin();
-        $this->reportTelegram();
-        $this->line($result === self::SUCCESS ? '=== Орнату сәтті аяқталды ===' : '=== Орнату аяқталмады ===');
+        [$ok, $adminLines] = $this->ensureAdmin();
+        $this->details[] = $this->telegramStatus();
 
-        return $result;
+        return $this->finish($ok, $adminLines);
+    }
+
+    /** @param  list<string>  $headline  Ең алдымен көрсетілетін жолдар. */
+    private function finish(bool $ok, array $headline): int
+    {
+        $this->line($ok ? 'ОРНАТУ СӘТТІ' : 'ОРНАТУ АЯҚТАЛМАДЫ');
+        foreach ($headline as $line) {
+            $this->line($line);
+        }
+        $this->line('Қатысу '.config('app.version').' · PHP '.PHP_VERSION.$this->databaseLabel());
+        foreach ($this->details as $line) {
+            $this->line($line);
+        }
+
+        return $ok ? self::SUCCESS : self::FAILURE;
     }
 
     /** @return list<string> */
@@ -77,7 +93,7 @@ class Install extends Command
         $problems = [];
 
         if (version_compare(PHP_VERSION, '8.3.0', '<')) {
-            $problems[] = 'PHP 8.3 не одан жоғары керек, ал мұнда '.PHP_VERSION.'. Панельден PHP нұсқасын ауыстырыңыз.';
+            $problems[] = 'PHP 8.3 не одан жоғары керек, ал мұнда '.PHP_VERSION.'.';
         }
         foreach (self::REQUIRED_EXTENSIONS as $extension) {
             if (! extension_loaded($extension)) {
@@ -90,20 +106,30 @@ class Install extends Command
             }
         }
         if (! is_file(base_path('.env'))) {
-            $problems[] = '.env файлы жоқ. Оны .env.example.production файлынан көшіріп жасаңыз.';
+            $problems[] = '.env файлы жоқ. Оны .env.example.production файлынан жасаңыз.';
         } elseif (! is_writable(base_path('.env')) && (config('app.key') === null || config('app.key') === '')) {
-            $problems[] = '.env файлына жазу мүмкін емес, сондықтан шифрлау кілті сақталмайды.';
+            $problems[] = '.env файлына жазу мүмкін емес, шифрлау кілті сақталмайды.';
         }
 
         try {
-            $version = DB::selectOne('select version() as v')->v;
-            $this->line('Дерекқор: '.$version);
+            DB::selectOne('select 1');
         } catch (Throwable $e) {
-            $problems[] = 'Дерекқорға қосылу мүмкін болмады. .env файлындағы DB_ мәндерін (әсіресе парольді) тексеріңіз. Себебі: '
+            $problems[] = 'Дерекқорға қосылу мүмкін болмады. .env файлындағы DB_ мәндерін (әсіресе парольді) тексеріңіз. '
                 .$this->safeMessage($e);
         }
 
         return $problems;
+    }
+
+    private function databaseLabel(): string
+    {
+        try {
+            $version = (string) DB::selectOne('select version() as v')->v;
+
+            return ' · '.(str_contains($version, 'MariaDB') ? 'MariaDB ' : 'MySQL ').strtok($version, '-');
+        } catch (Throwable) {
+            return '';
+        }
     }
 
     /**
@@ -121,10 +147,15 @@ class Install extends Command
         try {
             $name = str_replace('`', '``', (string) DB::connection()->getDatabaseName());
             DB::statement("alter database `{$name}` character set utf8mb4 collate utf8mb4_unicode_ci");
-            $this->line("Дерекқордың әдепкі кодталуы {$current} еді, utf8mb4-ке ауыстырылды.");
+            $this->details[] = "Дерекқор кодталуы {$current} → utf8mb4.";
         } catch (Throwable) {
-            $this->line("Дерекқордың әдепкі кодталуы {$current} (өзгертуге құқық жоқ). Кестелер бәрібір utf8mb4-пен ашылады.");
+            $this->details[] = "Дерекқордың әдепкі кодталуы {$current} (өзгертуге құқық жоқ; кестелер utf8mb4).";
         }
+    }
+
+    private function migrationCount(): int
+    {
+        return Schema::hasTable('migrations') ? DB::table('migrations')->count() : 0;
     }
 
     /** @return list<string> */
@@ -139,45 +170,45 @@ class Install extends Command
         return array_map(static fn (object $row): string => $row->name, $rows);
     }
 
-    private function ensureAdmin(): int
+    /** @return array{bool, list<string>} */
+    private function ensureAdmin(): array
     {
         if (User::query()->where('role', Role::Admin)->exists()) {
-            $this->line('Әкімші аккаунты бар, жаңасы ашылған жоқ.');
-
-            return self::SUCCESS;
+            return [true, ['Әкімші аккаунты бар, жаңасы ашылған жоқ.']];
         }
 
         $login = $this->argument('login');
         if ($login === null) {
-            $this->error('Әкімші әлі жоқ. Команданы логинді қосып қайта іске қосыңыз: qatysu:install <логин>');
-
-            return self::FAILURE;
+            return [false, ['Әкімші әлі жоқ. Команданың соңына логинді қосып қайта іске қосыңыз.']];
         }
+
         // Хостинг жоспарлаушысында бос орны бар не кирилл аргумент беру сенімсіз,
         // сондықтан аты-жөні міндетті емес. Әкімші оны кейін баптаудан өзгертеді.
-        $fullName = $this->argument('full_name') ?? 'Әкімші';
+        $exit = Artisan::call('qatysu:create-admin', [
+            'login' => $login,
+            'full_name' => $this->argument('full_name') ?? 'Әкімші',
+        ]);
+        $lines = array_values(array_filter(array_map('trim', explode("\n", Artisan::output()))));
 
-        $exit = Artisan::call('qatysu:create-admin', ['login' => $login, 'full_name' => $fullName]);
-        $this->line(trim(Artisan::output()));
-
-        return $exit;
+        return [$exit === self::SUCCESS, $lines];
     }
 
     /** Бот 10-кезеңде қосылады; мұнда тек хостингтен Telegram-ға шығу мүмкін бе, сол тексеріледі. */
-    private function reportTelegram(): void
+    private function telegramStatus(): string
     {
         try {
-            $status = Http::timeout(8)->get('https://api.telegram.org')->status();
-            $this->line("Telegram-ға шығу: бар (жауап коды {$status}).");
-        } catch (Throwable $e) {
-            $this->warn('Telegram-ға шығу: ЖОҚ. Бот үшін хостинг қолдауына жүгіну керек болады. Себебі: '.$this->safeMessage($e));
+            Http::timeout(8)->get('https://api.telegram.org')->status();
+
+            return 'Telegram-ға шығу: бар.';
+        } catch (Throwable) {
+            return 'Telegram-ға шығу: ЖОҚ.';
         }
     }
 
     /** Қате мәтінінде пароль кездесіп қалса, оны шығысқа жібермейді. */
     private function safeMessage(Throwable $e): string
     {
-        $message = $e->getMessage();
+        $message = mb_substr($e->getMessage(), 0, 160);
         $password = (string) config('database.connections.'.config('database.default').'.password');
 
         return $password === '' ? $message : str_replace($password, '***', $message);

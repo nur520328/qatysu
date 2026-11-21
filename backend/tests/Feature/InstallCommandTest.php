@@ -39,10 +39,16 @@ class InstallCommandTest extends TestCase
         [$exit, $output] = $this->install(['login' => 'zavuch', 'full_name' => 'Сынақ Завуч']);
 
         $this->assertSame(0, $exit, $output);
-        $this->assertStringContainsString('PHP: '.PHP_VERSION, $output);
-        $this->assertStringContainsString('Дерекқор: ', $output);
-        $this->assertStringContainsString('Бір реттік пароль: ', $output);
+        $this->assertStringContainsString('PHP '.PHP_VERSION, $output);
+        $this->assertStringContainsString('MariaDB ', $output);
         $this->assertStringContainsString('Telegram-ға шығу: бар', $output);
+
+        // Хостинг панелі шығыстың алғашқы ~450 таңбасын ғана көрсетеді. Нәтиже мен пароль
+        // алғашқы екі жолда тұруы, ал бүкіл шығыс сол шекке сыюы тиіс.
+        $lines = explode("\n", trim($output));
+        $this->assertSame('ОРНАТУ СӘТТІ', $lines[0]);
+        $this->assertStringStartsWith('Бір реттік пароль: ', $lines[1]);
+        $this->assertLessThan(450, mb_strlen($output), $output);
         $this->assertSame(1, User::query()->count());
     }
 
@@ -72,6 +78,16 @@ class InstallCommandTest extends TestCase
 
         $this->assertSame(1, $exit);
         $this->assertSame(0, User::query()->count());
+    }
+
+    public function test_failure_states_the_reason_first(): void
+    {
+        [$exit, $output] = $this->install();
+
+        $this->assertSame(1, $exit);
+        $lines = explode("\n", trim($output));
+        $this->assertSame('ОРНАТУ АЯҚТАЛМАДЫ', $lines[0]);
+        $this->assertStringContainsString('логинді қосып', $lines[1]);
     }
 
     public function test_unreachable_telegram_is_a_warning_not_a_failure(): void
