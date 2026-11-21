@@ -106,6 +106,27 @@ class SchoolClassTest extends AdminTestCase
             ->assertStatus(422)->assertExactJson(['code' => 'homeroom_invalid']);
     }
 
+    public function test_bulk_creates_a_whole_parallel_and_leaves_existing_classes_alone(): void
+    {
+        $year = $this->makeYear();
+        $teacher = User::factory()->create();
+        $this->makeClass($year, '9Ә', Shift::Afternoon, $teacher);
+
+        $this->postJson('/api/admin/classes/bulk', ['grade' => 9, 'letters' => ['А', 'Ә', ' Б', 'В'], 'shift' => 'morning'])
+            ->assertCreated()
+            ->assertExactJson(['created' => ['9А', '9Б', '9В'], 'skipped' => ['9Ә']]);
+
+        $existing = SchoolClass::query()->where('grade', 9)->where('letter', 'Ә')->firstOrFail();
+        $this->assertSame(Shift::Afternoon, $existing->shift);
+        $this->assertSame($teacher->id, $existing->homeroom_user_id);
+        $this->assertSame(4, SchoolClass::query()->count());
+
+        // Бір қате литера болса, ештеңе ашылмайды.
+        $this->postJson('/api/admin/classes/bulk', ['grade' => 10, 'letters' => ['А', 'б'], 'shift' => 'morning'])
+            ->assertStatus(422)->assertExactJson(['code' => 'invalid_class_name']);
+        $this->assertSame(0, SchoolClass::query()->where('grade', 10)->count());
+    }
+
     public function test_teacher_cannot_manage_classes(): void
     {
         $year = $this->makeYear();

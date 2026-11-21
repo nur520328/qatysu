@@ -209,3 +209,548 @@ body {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* ---- Әкімші беттері ---- */
+
+.shell__main--wide {
+  display: block;
+  width: 100%;
+  max-width: 78rem;
+  margin: 0 auto;
+}
+
+.muted {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.admin {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.admin__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 0.875rem;
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.tab--on {
+  background: var(--ink);
+  color: var(--surface);
+  font-weight: 600;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.page__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.page__title {
+  margin: 0 0 0.25rem;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.back {
+  display: inline-block;
+  padding: 0.5rem 0;
+  color: var(--accent);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.panel {
+  padding: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.panel--sticky {
+  position: sticky;
+  top: 0.5rem;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.panel__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.panel__lead {
+  margin: 0;
+  font-weight: 600;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.875rem;
+}
+
+.form > .row,
+.form > .field,
+.form > .alert,
+.form > .note {
+  width: 100%;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.row--end {
+  align-items: flex-end;
+}
+
+.field--grow {
+  flex: 1 1 12rem;
+}
+
+select.field__input {
+  padding-right: 0.5rem;
+}
+
+.field__input--file {
+  padding: 0.75rem 1rem;
+  height: auto;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.btn--strong {
+  min-height: 52px;
+  padding: 0 1.25rem;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.btn--danger {
+  border-color: var(--danger-line);
+  color: var(--danger-ink);
+}
+
+.note {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  border: 1px solid #b9cdf3;
+  background: #e9f0fc;
+  color: #174aa6;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.group__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: 0.625rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-height: 100%;
+  padding: 0.875rem;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.tile--off {
+  background: transparent;
+  color: var(--muted);
+}
+
+.tile__name {
+  font-size: 1.375rem;
+  font-weight: 700;
+}
+
+.tile__line {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.tile__line--small {
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
+.roster {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.roster__item {
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.roster__row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.375rem 0.5rem 0.375rem 0.875rem;
+}
+
+.roster__no {
+  flex: none;
+  width: 1.75rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.roster__name {
+  flex: 1;
+  font-size: 1.0625rem;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.roster__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 0.875rem;
+  border-top: 1px solid var(--line);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.swatch {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 5px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.swatch--off {
+  border-color: var(--danger-line);
+  background: var(--danger-ground);
+}
+
+.months {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+  gap: 1rem;
+}
+
+.month {
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.month__title {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.month__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.25rem;
+}
+
+.month__wd {
+  padding-bottom: 0.25rem;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.day {
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.day--off {
+  border-color: var(--danger-line);
+  background: var(--danger-ground);
+  color: var(--danger-ink);
+}
+
+.day--sel {
+  border: 2px solid var(--accent);
+  font-weight: 700;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.75rem;
+}
+
+.stat {
+  padding: 0.875rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.stat b {
+  display: block;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.stat span {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.stat--warn {
+  border-color: var(--danger-line);
+  background: var(--danger-ground);
+}
+
+.stat--warn b,
+.stat--warn span {
+  color: var(--danger-ink);
+}
+
+.tablewrap {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.table th,
+.table td {
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid #edf0f4;
+  text-align: left;
+  vertical-align: top;
+}
+
+.table thead th {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--muted);
+  border-bottom-color: var(--line);
+  white-space: nowrap;
+}
+
+.table tbody tr:last-child th,
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.table tbody th {
+  font-weight: 600;
+}
+
+.table .num {
+  text-align: right;
+}
+
+.warn {
+  color: var(--danger-ink);
+  font-weight: 500;
+}
+
+.roster__sub {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.tag {
+  flex: none;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.tag--off {
+  border-color: var(--danger-line);
+  background: var(--danger-ground);
+  color: var(--danger-ink);
+}
+
+.field__input--num {
+  max-width: 8rem;
+}
+
+.mono {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+.secret {
+  border-color: var(--accent);
+}
+
+.secret__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
+  margin: 0;
+}
+
+.secret__list dt {
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.secret__list dd {
+  margin: 0;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 1.375rem;
+  font-weight: 600;
+  user-select: all;
+}
+
+/* Парольдер тізімі бүкіл экранды жабады: мәзір арқылы кездейсоқ шығып кету мүмкін емес. */
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  overflow: auto;
+  padding: 1.25rem;
+  background: var(--ground);
+}
+
+.sheet__head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 60rem;
+  margin: 0 auto 1rem;
+}
+
+.sheet__table {
+  max-width: 60rem;
+  margin: 0 auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+@media print {
+  .shell__bar,
+  .admin__nav,
+  .sheet__head .row,
+  .sheet__head .alert,
+  .sheet__head .note {
+    display: none;
+  }
+
+  .sheet {
+    position: static;
+    padding: 0;
+    background: #fff;
+  }
+
+  /* Әр жолды қиып, мұғалімге жеке беруге болатындай. */
+  .sheet__table td,
+  .sheet__table th {
+    padding: 0.5rem 0.625rem;
+    border: 1px dashed #777;
+  }
+
+  .sheet__table tr {
+    break-inside: avoid;
+  }
+}

@@ -1,0 +1,146 @@
+import { request, upload } from './client'
+import type { Role } from './client'
+
+// Келісім: docs/api.md, «Әкімші API».
+
+export type Shift = 'morning' | 'afternoon'
+export type ClassLanguage = 'kk' | 'ru'
+
+export interface Year {
+  id: number
+  name: string
+  start_date: string
+  end_date: string
+  is_current: boolean
+}
+
+export interface Day {
+  date: string
+  is_school_day: boolean
+  note: string | null
+}
+
+export interface SchoolClass {
+  id: number
+  name: string
+  grade: number
+  letter: string
+  shift: Shift
+  language: ClassLanguage
+  is_active: boolean
+  homeroom: { id: number; full_name: string } | null
+  student_count: number | null
+}
+
+export interface Student {
+  id: number
+  last_name: string
+  first_name: string
+  patronymic: string | null
+  class_id: number | null
+}
+
+export interface Account {
+  id: number
+  full_name: string
+  login: string
+  role: Role
+  is_active: boolean
+  must_change_password: boolean
+  homeroom_classes: string[]
+}
+
+export interface ImportRow {
+  sheet?: string
+  row: number
+  last_name?: string | null
+  first_name?: string | null
+  patronymic?: string | null
+  full_name?: string
+  class?: string
+  homeroom?: string | null
+  current_class?: string
+  code?: string
+}
+
+export interface StudentImportResult {
+  digest: string
+  imported: number | null
+  summary: { new: number; exists: number; other_class: number; errors: number }
+  sheets: { name: string; new: number; exists: number; other_class: number; errors: number; error: string | null }[]
+  problems: ImportRow[]
+  other_class: ImportRow[]
+}
+
+export interface Credential {
+  full_name: string
+  login: string
+  password: string
+  homeroom: string | null
+}
+
+export interface TeacherImportResult {
+  digest: string
+  summary: { new: number; exists: number; errors: number; warnings: number }
+  new: { row: number; full_name: string; login: string; homeroom: string | null; warning: string | null }[]
+  problems: ImportRow[]
+  credentials: Credential[] | null
+}
+
+export type Settings = Record<'max_lessons_per_shift' | 'homeroom_edit_days' | 'pending_reason_days', number>
+
+export interface StudentNames {
+  last_name: string
+  first_name: string
+  patronymic: string | null
+}
+
+function fileForm(file: File, digest?: string): FormData {
+  const form = new FormData()
+  form.append('file', file)
+  if (digest !== undefined) form.append('digest', digest)
+  return form
+}
+
+export const adminApi = {
+  years: () => request<{ years: Year[] }>('GET', '/admin/academic-years').then((r) => r.years),
+  createYear: (data: Pick<Year, 'name' | 'start_date' | 'end_date'>) =>
+    request<{ year: Year }>('POST', '/admin/academic-years', data).then((r) => r.year),
+  calendar: (yearId: number) =>
+    request<{ year: Year; days: Day[]; school_day_count: number }>('GET', `/admin/academic-years/${yearId}/calendar`),
+  setCalendarRange: (yearId: number, data: { from: string; to: string; is_school_day: boolean; note: string | null }) =>
+    request<{ changed: number }>('PUT', `/admin/academic-years/${yearId}/calendar`, data),
+
+  classes: () => request<{ year: Year | null; classes: SchoolClass[] }>('GET', '/admin/classes'),
+  createClasses: (data: { grade: number; letters: string[]; shift: Shift }) =>
+    request<{ created: string[]; skipped: string[] }>('POST', '/admin/classes/bulk', data),
+  updateClass: (id: number, data: Partial<{ name: string; shift: Shift; homeroom_user_id: number | null; is_active: boolean }>) =>
+    request<{ class: SchoolClass }>('PATCH', `/admin/classes/${id}`, data).then((r) => r.class),
+
+  students: (classId: number) =>
+    request<{ class: SchoolClass; date: string; students: Student[] }>('GET', `/admin/classes/${classId}/students`),
+  addStudent: (classId: number, names: StudentNames) =>
+    request<{ student: Student }>('POST', `/admin/classes/${classId}/students`, names).then((r) => r.student),
+  updateStudent: (id: number, names: StudentNames) =>
+    request<{ student: Student }>('PATCH', `/admin/students/${id}`, names).then((r) => r.student),
+  transferStudent: (id: number, classId: number) =>
+    request<{ student: Student }>('POST', `/admin/students/${id}/transfer`, { class_id: classId }).then((r) => r.student),
+  withdrawStudent: (id: number) => request<{ student: Student }>('POST', `/admin/students/${id}/withdraw`, {}),
+
+  importStudents: (file: File, digest?: string) =>
+    upload<StudentImportResult>('/admin/import/students', fileForm(file, digest)),
+  importTeachers: (file: File, digest?: string) =>
+    upload<TeacherImportResult>('/admin/import/teachers', fileForm(file, digest)),
+
+  accounts: () => request<{ users: Account[] }>('GET', '/admin/users').then((r) => r.users),
+  createAccount: (data: { last_name: string; first_name: string; patronymic: string | null; role: Role }) =>
+    request<{ user: Account; one_time_password: string }>('POST', '/admin/users', data),
+  updateAccount: (id: number, data: Partial<{ full_name: string; is_active: boolean }>) =>
+    request<{ user: Account }>('PATCH', `/admin/users/${id}`, data).then((r) => r.user),
+  resetPassword: (id: number) =>
+    request<{ user: Account; one_time_password: string }>('POST', `/admin/users/${id}/reset-password`),
+
+  settings: () => request<{ settings: Settings }>('GET', '/admin/settings').then((r) => r.settings),
+  updateSettings: (data: Partial<Settings>) =>
+    request<{ settings: Settings }>('PATCH', '/admin/settings', data).then((r) => r.settings),
+}

@@ -13,7 +13,7 @@ use App\Support\Translit;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Мұғалімдер тізімін үлгі файлдан жүктеу (`docs/үлгілер/mugalimder-ulgi.xlsx`).
+ * Мұғалімдер тізімін үлгі файлдан жүктеу (`frontend/public/templates/mugalimder-ulgi.xlsx`).
  * `analyze` ештеңені өзгертпейді; `apply` аккаунттарды ашып, бір реттік парольдерді бір-ақ рет қайтарады.
  */
 class TeacherImport

@@ -82,6 +82,54 @@ class SchoolClassController extends Controller
         return response()->json(['class' => $class->load('homeroom')->toApi(0)], 201);
     }
 
+    /**
+     * Бір параллельдің сыныптарын бірден ашады (мысалы: 9-сынып, А Ә Б В, таңғы смена).
+     * Бұрыннан бар сыныптар өзгертілмейді, `skipped` тізімінде қайтарылады.
+     */
+    public function bulk(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'grade' => ['required', 'integer', 'min:'.ClassName::MIN_GRADE, 'max:'.ClassName::MAX_GRADE],
+            'letters' => ['required', 'array', 'min:1', 'max:20'],
+            'letters.*' => ['required', 'string', 'max:2'],
+            'shift' => ['required', Rule::in(Shift::values())],
+            'language' => ['sometimes', Rule::in(ClassLanguage::values())],
+        ]);
+
+        $year = AcademicYear::current();
+        if ($year === null) {
+            return $this->error('no_current_year', 409);
+        }
+        $names = [];
+        foreach ($data['letters'] as $letter) {
+            $name = ClassName::tryParse($data['grade'].trim($letter));
+            if ($name === null) {
+                return $this->error('invalid_class_name');
+            }
+            $names[(string) $name] = $name;
+        }
+
+        $created = [];
+        $skipped = [];
+        foreach ($names as $text => $name) {
+            if ($this->exists($year->id, $name)) {
+                $skipped[] = $text;
+
+                continue;
+            }
+            SchoolClass::query()->create([
+                'academic_year_id' => $year->id,
+                'grade' => $name->grade,
+                'letter' => $name->letter,
+                'shift' => $data['shift'],
+                'language' => $data['language'] ?? ClassLanguage::Kazakh->value,
+            ]);
+            $created[] = $text;
+        }
+
+        return response()->json(['created' => $created, 'skipped' => $skipped], 201);
+    }
+
     public function update(Request $request, SchoolClass $class): JsonResponse
     {
         $data = $request->validate([

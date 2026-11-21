@@ -2,8 +2,15 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LanguageSwitcher } from './LanguageSwitcher'
 
+interface ShellProps {
+  children: ReactNode
+  actions?: ReactNode
+  /** Кең беттер (кестелер, тізімдер) үшін мазмұн экран еніне жайылады. */
+  wide?: boolean
+}
+
 /** Барлық беттің ортақ жиегі: атау, тіл ауыстырғыш, мазмұн. */
-export function Shell({ children, actions }: { children: ReactNode; actions?: ReactNode }) {
+export function Shell({ children, actions, wide = false }: ShellProps) {
   const { t } = useTranslation()
 
   return (
@@ -15,7 +22,7 @@ export function Shell({ children, actions }: { children: ReactNode; actions?: Re
           {actions}
         </div>
       </header>
-      <main className="shell__main">{children}</main>
+      <main className={wide ? 'shell__main shell__main--wide' : 'shell__main'}>{children}</main>
     </div>
   )
 }

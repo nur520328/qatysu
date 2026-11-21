@@ -92,6 +92,7 @@ Frontend пен backend арасындағы келісім. Екі жақ та 
 |---|---|---|---|---|
 | GET | `/classes?year_id=` | — (әдепкі: ағымдағы жыл) | `{"year", "classes": [class]}` | |
 | POST | `/classes` | `{"name", "shift", "language"?, "homeroom_user_id"?}` | `201 {"class"}` | `422 invalid_class_name`, `409 class_exists`, `409 no_current_year`, `422 homeroom_invalid` |
+| POST | `/classes/bulk` | `{"grade", "letters": ["А", "Ә"], "shift", "language"?}` | `201 {"created": [атаулар], "skipped": [бұрыннан бар атаулар]}` | `422 invalid_class_name`, `409 no_current_year` |
 | PATCH | `/classes/{id}` | жоғарыдағы өрістер + `"is_active"` | `{"class"}` | сол кодтар |
 
 `class`: `{"id", "name", "grade", "letter", "shift": "morning|afternoon", "language": "kk|ru",
@@ -157,7 +158,7 @@ Frontend пен backend арасындағы келісім. Екі жақ та 
   `invalid_class`, `class_not_found`, `class_closed`, `duplicate_in_file`. Парақ қатесі: `header_not_found`.
 - Қате жолдар өткізіледі, қалғандары жүктеледі.
 
-**Мұғалімдер файлы** (`docs/үлгілер/mugalimder-ulgi.xlsx`): тақырыпта «Тегі», «Аты» міндетті;
+**Мұғалімдер файлы** (`frontend/public/templates/mugalimder-ulgi.xlsx`): тақырыпта «Тегі», «Аты» міндетті;
 «Әкесінің аты», «Жетекші сыныбы», «Логин» міндетті емес. «№» бағанында «үлгі» деп тұрған жол өткізіледі.
 
 - Логин бос болса, тегі мен атының бас әрпінен жасалады (`akhmetova.g`); бос емес болса соңына 2, 3 … қосылады.

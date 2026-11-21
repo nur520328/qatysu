@@ -34,6 +34,7 @@ Route::middleware(['auth:sanctum', 'account'])->group(function () {
 
         Route::get('classes', [SchoolClassController::class, 'index']);
         Route::post('classes', [SchoolClassController::class, 'store']);
+        Route::post('classes/bulk', [SchoolClassController::class, 'bulk']);
         Route::patch('classes/{class}', [SchoolClassController::class, 'update']);
 
         Route::get('classes/{class}/students', [StudentController::class, 'index']);

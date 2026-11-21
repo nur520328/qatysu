@@ -19,14 +19,24 @@ function placeholders(text: string): string[] {
   return [...text.matchAll(/\{\{\s*(\w+)\s*\}\}/g)].map((m) => m[1]).sort()
 }
 
+// Көпше түр жалғаулары тілге қарай әртүрлі (қазақша: one/other, орысша: one/few/many/other,
+// қытайша: other), сондықтан кілттер салыстырылғанда жалғау алынады.
+function pluralBase(key: string): string {
+  return key.replace(/_(zero|one|two|few|many|other)$/, '')
+}
+
+function baseKeys(entries: Map<string, string>): string[] {
+  return [...new Set([...entries.keys()].map(pluralBase))].sort()
+}
+
 const locales = { kk: flatten(kk), ru: flatten(ru), zh: flatten(zh) }
 
 // Қызыл сызық: бір тілде ғана мәтін қосуға болмайды. Бұл тест соны бақылайды.
 describe('аударма файлдары', () => {
   it('үш тілде кілттер бірдей', () => {
-    const reference = [...locales.kk.keys()].sort()
-    expect([...locales.ru.keys()].sort()).toEqual(reference)
-    expect([...locales.zh.keys()].sort()).toEqual(reference)
+    const reference = baseKeys(locales.kk)
+    expect(baseKeys(locales.ru)).toEqual(reference)
+    expect(baseKeys(locales.zh)).toEqual(reference)
   })
 
   it('бос мәтін жоқ', () => {
@@ -38,10 +48,12 @@ describe('аударма файлдары', () => {
   })
 
   it('айнымалылар үш тілде бірдей', () => {
-    for (const [key, value] of locales.kk) {
-      const expected = placeholders(value)
-      expect(placeholders(locales.ru.get(key) ?? ''), `ru:${key}`).toEqual(expected)
-      expect(placeholders(locales.zh.get(key) ?? ''), `zh:${key}`).toEqual(expected)
+    const expected = new Map<string, string[]>()
+    for (const [key, value] of locales.kk) expected.set(pluralBase(key), placeholders(value))
+    for (const [name, entries] of [['ru', locales.ru], ['zh', locales.zh]] as const) {
+      for (const [key, value] of entries) {
+        expect(placeholders(value), `${name}:${key}`).toEqual(expected.get(pluralBase(key)))
+      }
     }
   })
 })

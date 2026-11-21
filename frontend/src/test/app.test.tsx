@@ -1,11 +1,13 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
+import { beforeEach, describe, expect, it } from 'vitest'
 import type { User } from '../api/client'
 import { App } from '../App'
 import { AuthProvider } from '../auth/AuthContext'
 import i18n, { setLocale } from '../i18n'
 import { isStrongPassword } from '../auth/password'
+import { mockServer } from './mockServer'
 
 const teacher: User = {
   id: 7,
@@ -16,34 +18,13 @@ const teacher: User = {
   homeroom_classes: ['7Ә'],
 }
 
-type Handler = (init: RequestInit | undefined) => { status: number; body?: unknown }
-
-/** fetch-ті жолы бойынша жауап беретін жалған сервермен алмастырады. */
-function mockServer(routes: Record<string, Handler>) {
-  const calls: { key: string; body: unknown }[] = []
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const key = `${init?.method ?? 'GET'} ${String(input)}`
-      calls.push({ key, body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined })
-      if (key === 'GET /sanctum/csrf-cookie') {
-        document.cookie = 'XSRF-TOKEN=test-token'
-        return new Response(null, { status: 204 })
-      }
-      const handler = routes[key]
-      if (handler === undefined) throw new Error(`unexpected request: ${key}`)
-      const { status, body } = handler(init)
-      return new Response(body === undefined ? null : JSON.stringify(body), { status })
-    }),
-  )
-  return calls
-}
-
 function renderApp() {
   return render(
-    <AuthProvider>
-      <App />
-    </AuthProvider>,
+    <MemoryRouter>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </MemoryRouter>,
   )
 }
 
