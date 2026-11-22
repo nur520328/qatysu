@@ -67,7 +67,7 @@ function CodeEntry({ store, notice }: { store: DutyStore; notice: 'ended' | null
   }
 
   return (
-    <Shell>
+    <Shell about={false}>
       <form className="card" onSubmit={onSubmit} noValidate>
         <h1 className="card__title">{t('duty.codeTitle')}</h1>
         <p className="card__text">{t('duty.codeLead')}</p>
@@ -130,7 +130,7 @@ function ClassList({ store, snapshot, flash, onOpen }: ListProps) {
   }
 
   return (
-    <Shell wide actions={<button className="btn" type="button" onClick={() => void leave()}>{t('duty.logout')}</button>}>
+    <Shell wide about={false} actions={<button className="btn" type="button" onClick={() => void leave()}>{t('duty.logout')}</button>}>
       <section className="page">
         <header>
           <h1 className="page__title">

@@ -128,7 +128,9 @@
     "telegram_token_missing": "服务器上没有写入机器人的令牌。",
     "telegram_token_invalid": "令牌错误：Telegram 不接受。请检查 .env 文件中的令牌。",
     "telegram_unreachable": "无法连接 Telegram 服务器。请稍候再试。",
-    "telegram_rejected": "Telegram 拒绝了请求。"
+    "telegram_rejected": "Telegram 拒绝了请求。",
+    "photo_invalid": "该文件不是图片或尺寸太小（至少 100×100 像素）。请选择 JPG、PNG 或 WebP 图片。",
+    "photo_too_large": "照片太大。请选择不超过 5 MB 的照片。"
   },
   "calendar": {
     "title": "校历",
@@ -656,5 +658,34 @@
     "linkedUsers": "已绑定的员工：{{linked}} / {{total}}",
     "sent": "最近 24 小时已发送通知：{{sent}}，未发送：{{failed}}",
     "rejected": "Telegram 的回复：{{detail}}"
+  },
+  "about": {
+    "link": "关于平台",
+    "title": "关于平台",
+    "version": "版本：{{version}}",
+    "back": "← 返回",
+    "purposeTitle": "项目目标",
+    "purpose": "本项目的主要目标是实现学校工作的自动化、摆脱繁琐的纸质文书，同时及时发现学生出勤方面出现的问题，并作出相应的决定。",
+    "authorTitle": "作者",
+    "authorName": "艾别吾·努尔开力德",
+    "photoAlt": "作者照片：艾别吾·努尔开力德",
+    "role1": "化学教师",
+    "role2": "教师-大师（педагог-шебер）",
+    "role3": "博士研究生（PhD）",
+    "role4": "“2025 年度最佳教师”（ҮЗДІК ПЕДАГОГ-2025）奖金获得者",
+    "contactTitle": "联系方式",
+    "email": "电子邮箱",
+    "whatsapp": "WhatsApp",
+    "telegram": "Telegram",
+    "photoPanel": "“关于平台”页面上的照片",
+    "photoIntro": "作者照片显示在“关于平台”页面上，该页面可从登录页打开，任何人都能看到。上传的照片会被缩小，其中的附加信息（拍摄地点、手机型号）会被删除。",
+    "photoChoose": "选择照片（JPG、PNG 或 WebP，不超过 5 MB）",
+    "photoUpload": "上传",
+    "photoRemove": "移除照片",
+    "photoNone": "尚未上传照片。",
+    "photoSaved": "照片已保存。",
+    "photoRemoved": "照片已移除。",
+    "photoCurrent": "当前照片",
+    "openPage": "打开页面"
   }
 }

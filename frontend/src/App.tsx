@@ -8,6 +8,7 @@ import { DutyApp } from './pages/duty/DutyApp'
 import { DutyPage } from './pages/admin/DutyPage'
 import { SummaryPage } from './pages/admin/SummaryPage'
 import { ReportPage } from './pages/admin/ReportPage'
+import { AboutPage } from './pages/AboutPage'
 import { ClassMonthPage } from './pages/staff/ClassMonthPage'
 import { DayPage } from './pages/staff/DayPage'
 import { RegisterPage } from './pages/staff/RegisterPage'
@@ -58,6 +59,10 @@ function AdminDay() {
 export function App() {
   const { t } = useTranslation()
   const { state } = useAuth()
+  const { pathname } = useLocation()
+
+  // «Платформа туралы» кірген адамға да, кірмегенге де бірдей ашық.
+  if (pathname === '/about') return <AboutPage />
 
   if (state.status === 'loading') {
     return (

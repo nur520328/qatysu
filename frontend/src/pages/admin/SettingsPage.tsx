@@ -1,8 +1,11 @@
 import { useCallback, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import { adminApi } from '../../api/admin'
 import type { Settings } from '../../api/admin'
+import { aboutApi } from '../../api/about'
+import type { AboutState } from '../../api/about'
 import { ApiError } from '../../api/client'
 import { telegramApi } from '../../api/telegram'
 import type { TelegramAdminState } from '../../api/telegram'
@@ -116,6 +119,7 @@ function SettingsForm({ initial }: { initial: Settings }) {
         <button className="btn btn--strong" type="submit" disabled={busy}>{busy ? t('common.saving') : t('common.save')}</button>
       </form>
       <BackupPanel />
+      <AuthorPhotoPanel />
       {/* Бот қосылған сәтте жеке «Байланыстыру» бөлігі бетті жаңартпай-ақ пайда болуы үшін. */}
       <TelegramAdminPanel onSetup={() => setBotVersion((v) => v + 1)} />
       <TelegramPanel key={botVersion} />
@@ -264,6 +268,63 @@ function TelegramAdminPanel({ onSetup }: { onSetup: () => void }) {
           </div>
         </>
       )}
+    </section>
+  )
+}
+
+/** «Платформа туралы» бетіндегі автордың суретін жүктеу не алып тастау. Сурет серверде кішірейтіліп, ішкі дерегінен тазартылады. */
+function AuthorPhotoPanel() {
+  const { t } = useTranslation()
+  const errorText = useErrorText()
+  const { data: loaded, error } = useLoad(aboutApi.state)
+  const [updated, setUpdated] = useState<AboutState | null>(null)
+  const [file, setFile] = useState<File | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [failure, setFailure] = useState<unknown>(null)
+  const [notice, setNotice] = useState<'photoSaved' | 'photoRemoved' | null>(null)
+  // Жүктелгеннен кейін файл өрісі тазаруы үшін оны қайта жасаймыз.
+  const [inputKey, setInputKey] = useState(0)
+  const data = updated ?? loaded
+
+  const run = async (action: () => Promise<AboutState>, done: 'photoSaved' | 'photoRemoved') => {
+    setBusy(true)
+    setFailure(null)
+    setNotice(null)
+    try {
+      setUpdated(await action())
+      setNotice(done)
+      setFile(null)
+      setInputKey((key) => key + 1)
+    } catch (e) {
+      setFailure(e)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="panel form" aria-label={t('about.photoPanel')}>
+      <h2 className="panel__title">{t('about.photoPanel')}</h2>
+      <p className="muted">{t('about.photoIntro')} <Link to="/about">{t('about.openPage')}</Link></p>
+      {(failure !== null || error !== null) && <p className="alert" role="alert">{errorText(failure ?? error)}</p>}
+      {notice !== null && <p className="note" role="status">{t(`about.${notice}`)}</p>}
+
+      {data !== undefined && (data.photo === null
+        ? <p className="muted">{t('about.photoNone')}</p>
+        : <img className="about__photo" src={data.photo} alt={t('about.photoCurrent')} width={160} height={160} />)}
+
+      <label className="field">
+        <span className="field__label">{t('about.photoChoose')}</span>
+        <input key={inputKey} className="field__input" type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+      </label>
+      <div className="row">
+        <button className="btn btn--strong" type="button" disabled={busy || file === null} onClick={() => file !== null && void run(() => aboutApi.uploadPhoto(file), 'photoSaved')}>
+          {t('about.photoUpload')}
+        </button>
+        {data?.photo != null && (
+          <button className="btn" type="button" disabled={busy} onClick={() => void run(aboutApi.removePhoto, 'photoRemoved')}>{t('about.photoRemove')}</button>
+        )}
+      </div>
     </section>
   )
 }

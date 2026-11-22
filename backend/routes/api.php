@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AboutController;
 use App\Http\Controllers\Admin\AcademicYearController;
 use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\DailySummaryController;
@@ -69,6 +70,8 @@ Route::middleware(['auth:sanctum', 'account'])->group(function () {
         Route::delete('duty-codes/{code}', [DutyCodeController::class, 'destroy']);
 
         Route::get('daily-summary', [DailySummaryController::class, 'show']);
+        Route::post('about/photo', [AboutController::class, 'storePhoto'])->middleware('throttle:20,1');
+        Route::delete('about/photo', [AboutController::class, 'destroyPhoto']);
         Route::get('telegram', [LinkController::class, 'adminShow']);
         Route::post('telegram/setup', [LinkController::class, 'adminSetup'])->middleware('throttle:10,1');
         Route::get('reports/{type}', [ReportController::class, 'show'])->whereIn('type', ['weekly', 'monthly']);
@@ -131,3 +134,7 @@ Route::prefix('duty')->group(function () {
 
 // Telegram серверінен келетін хабарлар: кіру жоқ, құпия тақырыппен тексеріледі (docs/кезең-10-жоспар.md, 4-шешім).
 Route::post('telegram/webhook', WebhookController::class)->middleware('throttle:240,1');
+
+// «Платформа туралы»: кірмеген адамға да ашық (нұсқа және автордың суреті; оқушы не мұғалім дерегі жоқ).
+Route::get('about', [AboutController::class, 'show'])->middleware('throttle:120,1');
+Route::get('about/photo', [AboutController::class, 'photo'])->middleware('throttle:120,1');

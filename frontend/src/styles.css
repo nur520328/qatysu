@@ -1187,3 +1187,58 @@ button.tile {
     text-decoration: none;
   }
 }
+
+/* ---- «Платформа туралы» ---- */
+.shell__foot {
+  padding: 0.75rem 1.25rem 1.25rem;
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+.shell__foot a {
+  color: var(--muted);
+}
+
+.about__author {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  align-items: flex-start;
+}
+
+.about__photo {
+  width: 10rem;
+  height: 10rem;
+  border-radius: 0.75rem;
+  object-fit: cover;
+  flex: none;
+}
+
+.about__name {
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.about__roles {
+  margin: 0;
+  padding-left: 1.25rem;
+  line-height: 1.7;
+}
+
+.about__contacts {
+  margin: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.about__contacts dt {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.about__contacts dd {
+  margin: 0;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}

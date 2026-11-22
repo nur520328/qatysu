@@ -76,7 +76,7 @@ export function DutyClassPage({ store, target, readOnly, onDone }: Props) {
   const names = displayNames(roster?.students ?? [])
 
   return (
-    <Shell wide actions={<button className="btn" type="button" onClick={back}>{t('duty.back')}</button>}>
+    <Shell wide about={false} actions={<button className="btn" type="button" onClick={back}>{t('duty.back')}</button>}>
       <section className="page page--duty">
         <header className="page__head">
           <h1 className="page__title">{t('duty.classTitle', { name: target.name })}</h1>

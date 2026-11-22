@@ -25,7 +25,7 @@ tar -C "$ROOT/backend" \
   --exclude='./.gitattributes' --exclude='./pint.json' \
   --exclude='./.gitignore' --exclude='./.npmrc' --exclude='./.styleci.yml' \
   --exclude='./storage/logs/*.log' \
-  --exclude='./storage/app/backups' --exclude='./storage/app/install-marker.json' \
+  --exclude='./storage/app/backups' --exclude='./storage/app/install-marker.json' --exclude='./storage/app/about' \
   --exclude='./storage/framework/cache/data/*' \
   --exclude='./storage/framework/sessions/*' \
   --exclude='./storage/framework/views/*' \

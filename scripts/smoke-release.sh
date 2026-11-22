@@ -167,6 +167,10 @@ python3 -c "import sys, zipfile; z = zipfile.ZipFile(sys.argv[1]); assert z.test
 ANY_CLASS="$(mariadb -uroot -N qatysu_smoke -e "select id from classes order by id limit 1")"
 [ "$(curl -s -o "$WORK/class-month.json" -w '%{http_code}' -b "$JAR" -H 'Accept: application/json' -H "Origin: $BASE" "$BASE/api/homeroom/classes/$ANY_CLASS/month")" = 200 ] || fail "сыныптың айлық қорытындысы ашылмады"
 grep -q '"students":\[' "$WORK/class-month.json" || fail "сыныптың айлық қорытындысы жауабы қате"
+# «Платформа туралы»: кірмеген адамға ашық, нұсқасы архивтікі; сурет әлі жоқ (архивке сурет салынбайды).
+curl -s -H 'Accept: application/json' "$BASE/api/about" | grep -q "\"version\":\"$(cat "$ROOT/VERSION" 2>/dev/null || cat VERSION)\",\"photo\":null" || fail "«Платформа туралы» жауабы қате"
+[ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/about/photo")" = 404 ] || fail "жүктелмеген сурет табылды"
+[ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/about")" = 200 ] || fail "«Платформа туралы» беті ашылмады"
 # Telegram бот (10-кезең): токен жоқ кезде бот өшірулі, сайт жұмыс істей береді; бөгде сұраныс қабылданбайды.
 curl -s -b "$JAR" -H 'Accept: application/json' -H "Origin: $BASE" "$BASE/api/telegram" | grep -q '"ready":false' || fail "токенсіз бот «дайын» деп көрінді"
 curl -s -b "$JAR" -H 'Accept: application/json' -H "Origin: $BASE" "$BASE/api/admin/telegram" | grep -q '"token_set":false' || fail "бот күйі қате"

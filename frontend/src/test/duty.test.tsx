@@ -91,6 +91,8 @@ describe('кезекшінің кіруі', () => {
     const user = userEvent.setup()
 
     const input = await screen.findByLabelText('Код')
+    // Кезекшінің планшетінде аралаудан алаңдататын сілтеме болмауы тиіс.
+    expect(screen.queryByRole('link', { name: 'Платформа туралы' })).not.toBeInTheDocument()
     const button = screen.getByRole('button', { name: 'Кіру' })
     await user.type(input, '12a3')
     expect(input).toHaveValue('123')
