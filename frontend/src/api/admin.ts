@@ -224,6 +224,7 @@ export interface ReportCounters {
 export interface ReportClass extends ReportCounters {
   id: number
   name: string
+  grade: number
   shift: Shift
   homeroom: string | null
   students: number
@@ -259,7 +260,27 @@ export interface ReportEvent {
   leave_permission: 'permitted' | 'unpermitted' | null
 }
 
-export interface WeeklyReport {
+export type ReportType = 'weekly' | 'monthly'
+
+/** Айлық есептегі бір апта (ай шекарасында қиылған) не бір параллель. */
+export interface ReportWeek extends ReportCounters {
+  from: string
+  to: string
+  school_days: number
+  class_days_expected: number
+  class_days_surveyed: number
+}
+
+export interface ReportGrade extends ReportCounters {
+  grade: number
+  classes: number
+  students: number
+  class_days_expected: number
+  class_days_surveyed: number
+}
+
+export interface PeriodReport {
+  type: ReportType
   from: string
   to: string
   school_days: string[]
@@ -270,26 +291,30 @@ export interface WeeklyReport {
   students: ReportStudent[]
   students_total: number
   events: ReportEvent[]
+  /** Тек айлық есепте. */
+  weeks?: ReportWeek[]
+  grades?: ReportGrade[]
 }
 
-export interface WeeklyReportResponse {
-  week: { from: string; to: string; previous: string; next: string | null; is_current: boolean }
+export interface ReportResponse {
+  period: { from: string; to: string; previous: string; next: string | null; is_current: boolean }
   version: 'live' | 'snapshot'
   snapshot: { generated_at: string; changed_since: number } | null
-  report: WeeklyReport
+  report: PeriodReport
 }
 
-function weekQuery(week: string | null, snapshot: boolean, extra = ''): string {
-  const parts = [week === null ? '' : `week=${week}`, snapshot ? 'version=snapshot' : '', extra].filter((part) => part !== '')
+function reportQuery(date: string | null, snapshot: boolean, extra = ''): string {
+  const parts = [date === null ? '' : `date=${date}`, snapshot ? 'version=snapshot' : '', extra].filter((part) => part !== '')
   return parts.length === 0 ? '' : `?${parts.join('&')}`
 }
 
 export const adminApi = {
-  weeklyReport: (week: string | null, snapshot: boolean) =>
-    request<WeeklyReportResponse>('GET', `/admin/reports/weekly${weekQuery(week, snapshot)}`),
+  /** `date` — кезеңнің кез келген күні (болмаса осы апта не осы ай). */
+  report: (type: ReportType, date: string | null, snapshot: boolean) =>
+    request<ReportResponse>('GET', `/admin/reports/${type}${reportQuery(date, snapshot)}`),
   /** Excel файлының мекенжайы; `names: false` аты-жөнсіз жиынтық. */
-  weeklyReportExportUrl: (week: string, snapshot: boolean, names: boolean) =>
-    `/api/admin/reports/weekly/export${weekQuery(week, snapshot, names ? '' : 'names=0')}`,
+  reportExportUrl: (type: ReportType, date: string, snapshot: boolean, names: boolean) =>
+    `/api/admin/reports/${type}/export${reportQuery(date, snapshot, names ? '' : 'names=0')}`,
 
   dailySummary: (date: string | null) =>
     request<DailySummary>('GET', date === null ? '/admin/daily-summary' : `/admin/daily-summary?date=${date}`),

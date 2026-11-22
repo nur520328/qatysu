@@ -89,3 +89,39 @@ export const homeroomApi = {
       'GET', `/homeroom/classes/${classId}/days/${date}/students/${studentId}/history`,
     ),
 }
+
+/** Жетекшінің айлық қорытындысындағы бір оқушы. Санауыштар апталық/айлық есептегідей. */
+export interface MonthStudent {
+  id: number
+  name: string
+  in_class_now: boolean
+  marked: number
+  absent: number
+  sick: number
+  excused: number
+  unexcused: number
+  pending: number
+  late: number
+  left: number
+  left_permitted: number
+  left_unpermitted: number
+  left_pending: number
+  attendance_pct: number | null
+  dates: string[]
+}
+
+export interface ClassMonth {
+  class: { id: number; name: string }
+  month: { from: string; to: string; previous: string; next: string | null; is_current: boolean }
+  complete: boolean
+  days_expected: number
+  days_surveyed: number
+  missing_dates: string[]
+  totals: Omit<MonthStudent, 'id' | 'name' | 'in_class_now' | 'dates'>
+  students: MonthStudent[]
+}
+
+export const monthApi = {
+  classMonth: (classId: number, date: string | null) =>
+    request<ClassMonth>('GET', `/homeroom/classes/${classId}/month${date === null ? '' : `?date=${date}`}`),
+}

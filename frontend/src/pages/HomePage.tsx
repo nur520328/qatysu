@@ -63,11 +63,14 @@ export function HomePage({ user }: { user: User }) {
             <section className="group" aria-label={t('homePending.myClass')}>
               <h2 className="panel__title">{t('homePending.myClass')}</h2>
               <div className="row">
-                {data.classes.map(({ class: cls, students }) => (
+                {data.classes.flatMap(({ class: cls, students }) => [
                   <Link key={cls.id} className="btn" to={`/homeroom/${cls.id}/${data.date}`}>
                     {t('classPage.title', { name: cls.name })} · {t('classes.students', { count: students.length })} · {t('day.openToday')}
-                  </Link>
-                ))}
+                  </Link>,
+                  <Link key={`${cls.id}-month`} className="btn" to={`/homeroom/${cls.id}/month`}>
+                    {data.classes.length > 1 ? `${cls.name} · ` : ''}{t('classMonth.open')}
+                  </Link>,
+                ])}
               </div>
             </section>
           </>

@@ -7,7 +7,8 @@ import { LoginPage } from './pages/LoginPage'
 import { DutyApp } from './pages/duty/DutyApp'
 import { DutyPage } from './pages/admin/DutyPage'
 import { SummaryPage } from './pages/admin/SummaryPage'
-import { WeeklyReportPage } from './pages/admin/WeeklyReportPage'
+import { ReportPage } from './pages/admin/ReportPage'
+import { ClassMonthPage } from './pages/staff/ClassMonthPage'
 import { DayPage } from './pages/staff/DayPage'
 import { RegisterPage } from './pages/staff/RegisterPage'
 import { Shell } from './components/Shell'
@@ -27,6 +28,17 @@ function TeacherDay() {
   return (
     <Shell wide actions={<button className="btn" type="button" onClick={() => void logout()}>{t('home.logout')}</button>}>
       <DayPage base="/homeroom" backTo="/" backLabel={t('common.back')} />
+    </Shell>
+  )
+}
+
+/** Жетекшінің айлық қорытындысы: мұғалімнің жиегінде. */
+function TeacherMonth() {
+  const { t } = useTranslation()
+  const { logout } = useAuth()
+  return (
+    <Shell wide actions={<button className="btn" type="button" onClick={() => void logout()}>{t('home.logout')}</button>}>
+      <ClassMonthPage backTo="/" />
     </Shell>
   )
 }
@@ -72,6 +84,7 @@ export function App() {
       <Routes>
         <Route path="/" element={<HomePage user={state.user} />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/homeroom/:classId/month" element={<TeacherMonth />} />
         <Route path="/homeroom/:classId/:date" element={<TeacherDay />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -87,7 +100,9 @@ export function App() {
         <Route path="import/teachers" element={<ImportTeachersPage />} />
         <Route path="duty" element={<DutyPage />} />
         <Route path="summary" element={<SummaryPage />} />
-        <Route path="reports" element={<WeeklyReportPage />} />
+        <Route path="reports" element={<ReportPage type="weekly" />} />
+        <Route path="reports/monthly" element={<ReportPage type="monthly" />} />
+        <Route path="class-month/:classId" element={<ClassMonthPage backTo="/admin/classes" admin />} />
         <Route path="attendance/:classId/:date" element={<AdminDay />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="calendar" element={<CalendarPage />} />

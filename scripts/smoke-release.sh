@@ -159,6 +159,14 @@ for names in 1 0; do
   python3 -c "import sys, zipfile; z = zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; assert len([n for n in z.namelist() if n.startswith('xl/worksheets/sheet')]) == int(sys.argv[2])" "$WORK/weekly-$names.xlsx" "$([ "$names" = 1 ] && echo 5 || echo 3)" || fail "апталық есептің Excel файлы бүлінген (names=$names)"
 done
 [ "$(curl -s -o /dev/null -w '%{http_code}' -H 'Accept: application/json' "$BASE/api/admin/reports/weekly/export")" = 401 ] || fail "есеп файлы кірмеген адамға ашық"
+# Айлық есеп (9-кезең) және сыныптың айлық қорытындысы.
+[ "$(curl -s -o "$WORK/monthly.json" -w '%{http_code}' -b "$JAR" -H 'Accept: application/json' -H "Origin: $BASE" "$BASE/api/admin/reports/monthly")" = 200 ] || fail "айлық есеп ашылмады"
+grep -q '"grades":\[' "$WORK/monthly.json" || fail "айлық есепте параллельдер жоқ"
+[ "$(curl -s -o "$WORK/monthly.xlsx" -w '%{http_code}' -b "$JAR" -H "Origin: $BASE" "$BASE/api/admin/reports/monthly/export")" = 200 ] || fail "айлық есептің Excel файлы жүктелмеді"
+python3 -c "import sys, zipfile; z = zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; assert len([n for n in z.namelist() if n.startswith('xl/worksheets/sheet')]) == 7" "$WORK/monthly.xlsx" || fail "айлық есептің Excel файлы бүлінген"
+ANY_CLASS="$(mariadb -uroot -N qatysu_smoke -e "select id from classes order by id limit 1")"
+[ "$(curl -s -o "$WORK/class-month.json" -w '%{http_code}' -b "$JAR" -H 'Accept: application/json' -H "Origin: $BASE" "$BASE/api/homeroom/classes/$ANY_CLASS/month")" = 200 ] || fail "сыныптың айлық қорытындысы ашылмады"
+grep -q '"students":\[' "$WORK/class-month.json" || fail "сыныптың айлық қорытындысы жауабы қате"
 [ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/templates/oqushylar-ulgi.xlsx")" = 200 ] || fail "оқушылар үлгісі жоқ"
 php artisan qatysu:freeze-reports >/dev/null || fail "есепті бекіту командасы құлады"
 php artisan schedule:list | grep -q "qatysu:freeze-reports" || fail "есепті бекіту кестеде жоқ"

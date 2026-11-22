@@ -305,20 +305,30 @@ Frontend пен backend арасындағы келісім. Екі жақ та 
 - `next_school_day` бүгіннен аспайды. Сыныптар сол күн кіретін оқу жылынан; оқушы саны сол күнгі тіркелу бойынша.
 - `ended`: сол күннің сменасы аяқталды ма (өткен күн үшін әрқашан `true`).
 
-## Апталық есеп (`/api/admin/reports/weekly`, тек `admin`)
+## Апталық және айлық есеп (`/api/admin/reports/{weekly|monthly}`, тек `admin`)
 
-Ережелері: `docs/кезең-8-жоспар.md`. Жауаптар кэштелмейді (`Cache-Control: no-store`).
+Ережелері: `docs/кезең-8-жоспар.md`, `docs/кезең-9-жоспар.md`. Екі есепті бір код есептейді (`PeriodReport`). Жауаптар кэштелмейді.
 
 | Әдіс | Жол | Сұраныс | Жауап | Қателер |
 |---|---|---|---|---|
-| GET | `/reports/weekly?week=YYYY-MM-DD&version=live\|snapshot` | `week` — аптаның кез келген күні (болмаса осы апта); `version` болмаса `live` | `{"week": {"from", "to", "previous", "next", "is_current"}, "version", "snapshot": {"generated_at", "changed_since"}\|null, "report"}` | `422 invalid_date`, `422 date_in_future`, `422 validation_failed`, `404 not_found` (бекітілген нұсқа жоқ) |
-| GET | `/reports/weekly/export?week=&version=&names=0\|1` | `names=0` — аты-жөнсіз жиынтық; болмаса толық | `.xlsx` файл (`qatysu-apta-<дүйсенбі>[-jiyntyq].xlsx`), сұраған адамның тілінде | сол қателер |
+| GET | `/reports/{type}?date=YYYY-MM-DD&version=live\|snapshot` | `date` — кезеңнің кез келген күні (болмаса осы апта не осы ай); `version` болмаса `live` | `{"period": {"from", "to", "previous", "next", "is_current"}, "version", "snapshot": {"generated_at", "changed_since"}\|null, "report"}` | `422 invalid_date`, `422 date_in_future`, `422 validation_failed`, `404 not_found` (бекітілген нұсқа жоқ) |
+| GET | `/reports/{type}/export?date=&version=&names=0\|1` | `names=0` — аты-жөнсіз жиынтық; болмаса толық | `.xlsx` (`qatysu-apta-<дүйсенбі>` не `qatysu-ai-<ЖЖЖЖ-АА>`, аты-жөнсізде `-jiyntyq`), сұраған адамның тілінде | сол қателер |
 
-- `report`: `{"type": "weekly", "from", "to", "school_days": [өткен оқу күндері], "complete", "totals", "days": [day], "classes": [class], "students": [student], "students_total", "events": [event]}`.
-- Санауыштар (`totals`, `day`, `class` ішінде): `marked`, `absent_marked` (тек кезекші аралаған сынып-күндер; пайыздың негізі), `absent`, `sick`, `excused`, `unexcused`, `pending`, `late`, `left`, `left_permitted`, `left_unpermitted`, `left_pending`, `attendance_pct` = (`marked` − `absent_marked`) ÷ `marked` × 100, бір ондық таңба; `marked` = 0 болса `null` («дерек жоқ»).
+- `report`: `{"type": "weekly"|"monthly", "from", "to", "school_days": [өткен оқу күндері], "complete", "totals", "days": [day], "classes": [class], "students": [student], "students_total", "events": [event]}`; айлықта қосымша `"weeks": [week]`, `"grades": [grade]`.
+- Санауыштар (`totals`, `day`, `class`, `week`, `grade` ішінде): `marked`, `absent_marked` (тек кезекші аралаған сынып-күндер; пайыздың негізі), `absent`, `sick`, `excused`, `unexcused`, `pending`, `late`, `left`, `left_permitted`, `left_unpermitted`, `left_pending`, `attendance_pct` = (`marked` − `absent_marked`) ÷ `marked` × 100, бір ондық таңба; `marked` = 0 болса `null` («дерек жоқ»).
 - `totals` қосымша: `classes`, `students`, `class_days_expected`, `class_days_surveyed`. `day` қосымша: `date`, `class_days_expected`, `class_days_surveyed`.
-- `class`: `{"id", "name", "shift", "homeroom", "students", "days_expected", "days_surveyed", "missing_dates": [аралынбаған күндер]}` + санауыштар.
+- `class`: `{"id", "name", "grade", "shift", "homeroom", "students", "days_expected", "days_surveyed", "missing_dates"}` + санауыштар.
+- `week` (ай ішіндегі дс–жс; ай шекарасында қиылады): `{"from", "to", "school_days", "class_days_expected", "class_days_surveyed"}` + санауыштар. `grade`: `{"grade", "classes", "students", "class_days_expected", "class_days_surveyed"}` + санауыштар.
 - `student` (себепсіз не себебі анықталмаған күні барлар, ең көбі 50, себепсіз күн саны бойынша кемімелі): `{"id", "name", "class_id", "class", "unexcused", "pending", "dates"}`. `students_total` — шектеусіз саны.
 - `event` (тіркелген кешігу мен кету): `{"date", "class_id", "class", "student_id", "name", "arrived_lesson", "left_lesson", "leave_permission"}`.
-- `snapshot.changed_since` — есеп бекітілгеннен кейін сол аптаның қанша қатысу жазбасы қосылды не өзгерді.
-- Бекіту: `qatysu:freeze-reports` сағат сайын (жоспарлағыш); аптаның соңғы оқу күнінің түстен кейінгі сменасы біткен соң. Аты-жөнімен файлды жүктеу серверлік журналға жазылады.
+- `snapshot.changed_since` — есеп бекітілгеннен кейін сол кезеңнің қанша қатысу жазбасы қосылды не өзгерді.
+- Бекіту: `qatysu:freeze-reports` сағат сайын; кезеңнің соңғы оқу күнінің түстен кейінгі сменасы біткен соң; жазбасы жоқ кезең бекітілмейді. Аты-жөнімен файлды жүктеу серверлік журналға жазылады.
+
+## Сыныптың айлық қорытындысы (`/api/homeroom/classes/{class}/month`, жетекші өз сыныбына, `admin` кез келгеніне)
+
+| Әдіс | Жол | Сұраныс | Жауап | Қателер |
+|---|---|---|---|---|
+| GET | `/classes/{class}/month?date=YYYY-MM-DD` | `date` — айдың кез келген күні (болмаса осы ай) | `{"class": {"id", "name"}, "month": {"from", "to", "previous", "next", "is_current"}, "complete", "days_expected", "days_surveyed", "missing_dates", "totals", "students": [student]}` | `403 forbidden`, `422 invalid_date`, `422 date_in_future` |
+
+- `student`: `{"id", "name", "in_class_now", "dates": [күні бойы жоқ болған күндері]}` + санауыштар (жоғарыдағыдай). Ай ішінде сыныпта болған барлық оқушы; тек осы сыныптың жазбалары саналады.
+- Әрқашан қазіргі күй: бекітілмейді.

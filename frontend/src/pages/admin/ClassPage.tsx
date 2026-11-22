@@ -65,6 +65,7 @@ export function ClassPage() {
         </div>
         {/* Завуч кез келген сыныптың қатысуын көріп, түзей алады (жетекші орнында болмаса да). */}
         <Link className="btn btn--strong" to={`/admin/attendance/${cls.id}/${data.today}`}>{t('day.attendance')}</Link>
+        <Link className="btn" to={`/admin/class-month/${cls.id}`}>{t('classMonth.open')}</Link>
       </header>
 
       {error !== null && <p className="alert" role="alert">{error}</p>}

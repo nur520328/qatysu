@@ -186,6 +186,34 @@ try {
   await shot(adminPage, 'weekly')
   step('апталық есеп: сандар мен оқиғалар дұрыс, Excel жүктелді, басып шығару көрінісінде мәзір мен батырмалар жоқ')
 
+  // Айлық есеп: параллельдер кестесінде 7-сыныптар; завуч сынып бетінен айлық қорытындыны ашады.
+  await adminPage.getByRole('link', { name: 'Айлық', exact: true }).click()
+  await adminPage.getByRole('heading', { name: 'Айлық есеп' }).waitFor()
+  const gradeRow = adminPage.getByRole('region', { name: 'Параллельдер бойынша' }).getByRole('row', { name: /^7-сыныптар/ })
+  await gradeRow.waitFor()
+  await adminPage.getByRole('region', { name: 'Апталар бойынша' }).getByRole('row').nth(1).waitFor()
+  const [monthFile] = await Promise.all([
+    adminPage.waitForEvent('download'),
+    adminPage.getByRole('link', { name: 'Excel (аты-жөнімен)' }).click(),
+  ])
+  if (!/^qatysu-ai-\d{4}-\d{2}\.xlsx$/.test(monthFile.suggestedFilename())) throw new Error(`айлық Excel атауы күтпеген: ${monthFile.suggestedFilename()}`)
+  await adminPage.getByRole('link', { name: 'Сыныптар мен оқушылар' }).click()
+  await adminPage.getByRole('link', { name: /^7Ә/ }).first().click()
+  await adminPage.getByRole('link', { name: 'Айлық қорытынды' }).click()
+  await adminPage.getByRole('heading', { name: 'Айлық қорытынды · 7Ә' }).waitFor()
+  await adminPage.getByRole('row', { name: new RegExp(`^${sick} 1 0% 1 1 0 0 0 0 0`) }).waitFor()
+  await adminPage.getByRole('row', { name: new RegExp(`^${late} 1 100% 0 0 0 0 0 1 0`) }).waitFor()
+  await adminPage.getByRole('row', { name: new RegExp(`^${leaver} 1 100% 0 0 0 0 0 0 1`) }).waitFor()
+  await shot(adminPage, 'class-month')
+  step('айлық есеп: апталар мен параллельдер бар, Excel жүктелді; завуч 7Ә-нің айлық қорытындысын ашты (үш оқушының сандары дұрыс)')
+
+  // Жетекші де өз сыныбының қорытындысын бастапқы беттен ашады.
+  await homeroom.goto(`${BASE}/`)
+  await homeroom.getByRole('link', { name: 'Айлық қорытынды' }).click()
+  await homeroom.getByRole('heading', { name: 'Айлық қорытынды · 7Ә' }).waitFor()
+  await homeroom.getByRole('row', { name: new RegExp(`^${sick} 1 0% 1 1`) }).waitFor()
+  step('жетекші өз сыныбының айлық қорытындысын ашты')
+
   // Кезекші енді бұл үш оқушының белгісін өзгерте алмайды.
   // Планшет тізімдерді серверден 20 секунд сайын және бет ашылғанда жаңартады; жаңарғанын күтеміз.
   await Promise.all([tablet.waitForResponse((r) => r.url().includes('/api/duty/rosters') && r.ok()), tablet.reload()])
