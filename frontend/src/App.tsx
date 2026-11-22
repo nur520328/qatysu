@@ -7,6 +7,7 @@ import { LoginPage } from './pages/LoginPage'
 import { DutyApp } from './pages/duty/DutyApp'
 import { DutyPage } from './pages/admin/DutyPage'
 import { SummaryPage } from './pages/admin/SummaryPage'
+import { WeeklyReportPage } from './pages/admin/WeeklyReportPage'
 import { DayPage } from './pages/staff/DayPage'
 import { RegisterPage } from './pages/staff/RegisterPage'
 import { Shell } from './components/Shell'
@@ -86,6 +87,7 @@ export function App() {
         <Route path="import/teachers" element={<ImportTeachersPage />} />
         <Route path="duty" element={<DutyPage />} />
         <Route path="summary" element={<SummaryPage />} />
+        <Route path="reports" element={<WeeklyReportPage />} />
         <Route path="attendance/:classId/:date" element={<AdminDay />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="calendar" element={<CalendarPage />} />

@@ -172,7 +172,12 @@ class WeeklyReportTest extends DutyTestCase
     public function test_report_is_frozen_once_when_the_week_ends_and_never_recalculated(): void
     {
         $this->assertSame(0, Artisan::call('qatysu:freeze-reports'));
-        // Өткен аптаның (9–15 қараша) суреті жоқ болғандықтан ол бірден жасалады; ағымдағы апта әлі аяқталған жоқ.
+        // Ағымдағы апта әлі аяқталған жоқ; өткен аптада (9–15 қараша) бірде-бір жазба жоқ, сондықтан ол бекітілмейді.
+        $this->assertSame(0, Report::query()->count());
+
+        // Өткен аптада жазба болса және суреті жоқ болса, ол кешігіп болса да бекітіледі.
+        $this->mark($this->a, '2026-11-13');
+        Artisan::call('qatysu:freeze-reports');
         $this->assertSame(['2026-11-09'], Report::query()->pluck('period_start')->map->toDateString()->all());
 
         $this->travelTo(CarbonImmutable::create(2026, 11, 20, 19, 5));

@@ -3,6 +3,7 @@
 namespace App\Services\Reports;
 
 use App\Models\AttendanceRecord;
+use App\Models\AttendanceRound;
 use App\Models\Report;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -23,6 +24,7 @@ class ReportSnapshotService
     /**
      * Бекітілуі тиіс, бірақ әлі бекітілмеген апталық есептерді жасайды: ағымдағы апта аяқталса соны,
      * өткен аптаның суреті жоқ болса оны да (жоспарлағыш бір күн істемей қалса да есеп жоғалмайды).
+     * Жазбасы мүлде жоқ апта бекітілмейді.
      *
      * @return list<Report>
      */
@@ -32,6 +34,12 @@ class ReportSnapshotService
         $created = [];
         foreach ([$current->subWeek(), $current] as $monday) {
             if ($this->weekly($monday) !== null || ! $this->weekly->isComplete($monday) || $this->weekly->elapsedSchoolDays($monday) === []) {
+                continue;
+            }
+            // Бірде-бір жазбасы жоқ аптада сақтайтын сурет жоқ (платформа іске қосылғанға дейінгі апталар, каникул).
+            $hasRounds = AttendanceRound::query()->whereDate('date', '>=', $monday->toDateString())
+                ->whereDate('date', '<=', $monday->addDays(6)->toDateString())->exists();
+            if (! $hasRounds) {
                 continue;
             }
             try {

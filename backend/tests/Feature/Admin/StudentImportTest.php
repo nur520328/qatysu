@@ -5,6 +5,8 @@ namespace Tests\Feature\Admin;
 use App\Models\SchoolClass;
 use App\Models\Student;
 use App\Models\User;
+use App\Services\Import\SpreadsheetReader;
+use App\Services\Import\StudentImport;
 use Illuminate\Http\UploadedFile;
 
 class StudentImportTest extends AdminTestCase
@@ -169,5 +171,17 @@ class StudentImportTest extends AdminTestCase
         $this->actingAs(User::factory()->create());
 
         $this->post('/api/admin/import/students', ['file' => $this->schoolFile()], ['Accept' => 'application/json'])->assertStatus(403);
+    }
+
+    public function test_site_template_is_understood_by_the_import(): void
+    {
+        // Сайттан жүктелетін үлгі (scripts/make-student-template.py) пен импорт бір-бірінен алшақтап кетпеуі тиіс.
+        $template = base_path('../frontend/public/templates/oqushylar-ulgi.xlsx');
+        $sheets = app(SpreadsheetReader::class)->read($template);
+        $analysis = app(StudentImport::class)->analyze($sheets);
+
+        $this->assertSame(['new' => 0, 'exists' => 0, 'other_class' => 0, 'errors' => 0], $analysis['summary']);
+        $this->assertCount(1, $analysis['sheets']);
+        $this->assertNull($analysis['sheets'][0]['error']);
     }
 }

@@ -62,7 +62,7 @@ describe('сыныптар', () => {
     expect(within(fifth).getByText('Сынақ Жетекші')).toBeInTheDocument()
     expect(within(screen.getByRole('region', { name: '6-сыныптар' })).getByText('жабық')).toBeInTheDocument()
     expect(screen.getByText(/3 сынып, 75 оқушы/)).toBeInTheDocument()
-    expect(within(screen.getByRole('navigation', { name: 'Негізгі мәзір' })).getAllByRole('link')).toHaveLength(6)
+    expect(within(screen.getByRole('navigation', { name: 'Негізгі мәзір' })).getAllByRole('link')).toHaveLength(7)
   })
 
   it('оқу жылы ашылмаған болса, күнтізбеге жол сілтейді', async () => {

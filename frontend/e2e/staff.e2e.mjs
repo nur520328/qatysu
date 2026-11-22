@@ -159,6 +159,33 @@ try {
   await adminPage.getByRole('heading', { name: 'Күнделікті жиынтық' }).waitFor()
   step('завуч жиынтығы: 1 сынып аралынды, 1 жоқ (ауырды), 1 кешікті, 1 кетті (рұқсатсыз); сыныптан жиынтыққа қайтты')
 
+  // Апталық есеп: сол тізбектің оқиғалары есепте, Excel файлы жүктеледі.
+  await adminPage.getByRole('link', { name: 'Есептер', exact: true }).click()
+  await adminPage.getByRole('heading', { name: 'Апталық есеп' }).waitFor()
+  const weekStats = adminPage.getByRole('status', { name: 'Апталық есеп' })
+  for (const [value, label] of [['1', 'оқушы-күн жоқ'], ['0', 'себепсіз'], ['1', 'кешігу'], ['1', 'кетіп қалу']]) {
+    const found = await weekStats.locator('.stat', { hasText: label }).first().locator('b').textContent()
+    if (found !== value) throw new Error(`апталық есеп «${label}»: ${found}, күтілгені ${value}`)
+  }
+  const weekEvents = adminPage.getByRole('region', { name: 'Кешігу мен кетіп қалу' })
+  await weekEvents.getByRole('row', { name: new RegExp(`7Ә ${late} 3-сабақтан келді`) }).waitFor()
+  await weekEvents.getByRole('row', { name: new RegExp(`7Ә ${leaver} 5-сабақтан кетіп қалды · рұқсатсыз`) }).waitFor()
+  await adminPage.getByRole('region', { name: 'Дерек жоқ күндер' }).getByText('7Б', { exact: true }).waitFor()
+  const [download] = await Promise.all([
+    adminPage.waitForEvent('download'),
+    adminPage.getByRole('link', { name: 'Excel (аты-жөнсіз)' }).click(),
+  ])
+  if (!/^qatysu-apta-\d{4}-\d{2}-\d{2}-jiyntyq\.xlsx$/.test(download.suggestedFilename())) {
+    throw new Error(`Excel файлының атауы күтпеген: ${download.suggestedFilename()}`)
+  }
+  await adminPage.emulateMedia({ media: 'print' })
+  if (await adminPage.getByRole('button', { name: 'Басып шығару / PDF' }).isVisible()) throw new Error('басып шығару көрінісінде батырмалар жасырылмады')
+  if (await adminPage.getByRole('navigation').first().isVisible()) throw new Error('басып шығару көрінісінде мәзір жасырылмады')
+  await shot(adminPage, 'weekly-print')
+  await adminPage.emulateMedia({ media: 'screen' })
+  await shot(adminPage, 'weekly')
+  step('апталық есеп: сандар мен оқиғалар дұрыс, Excel жүктелді, басып шығару көрінісінде мәзір мен батырмалар жоқ')
+
   // Кезекші енді бұл үш оқушының белгісін өзгерте алмайды.
   // Планшет тізімдерді серверден 20 секунд сайын және бет ашылғанда жаңартады; жаңарғанын күтеміз.
   await Promise.all([tablet.waitForResponse((r) => r.url().includes('/api/duty/rosters') && r.ok()), tablet.reload()])

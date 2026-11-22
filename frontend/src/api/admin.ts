@@ -204,7 +204,93 @@ export interface DailySummary {
   shifts: SummaryShift[]
 }
 
+/** Апталық есептің санауыштары. `marked`, `absent_marked` тек кезекші аралаған күндер бойынша. */
+export interface ReportCounters {
+  marked: number
+  absent_marked: number
+  absent: number
+  sick: number
+  excused: number
+  unexcused: number
+  pending: number
+  late: number
+  left: number
+  left_permitted: number
+  left_unpermitted: number
+  left_pending: number
+  attendance_pct: number | null
+}
+
+export interface ReportClass extends ReportCounters {
+  id: number
+  name: string
+  shift: Shift
+  homeroom: string | null
+  students: number
+  days_expected: number
+  days_surveyed: number
+  missing_dates: string[]
+}
+
+export interface ReportDay extends ReportCounters {
+  date: string
+  class_days_expected: number
+  class_days_surveyed: number
+}
+
+export interface ReportStudent {
+  id: number
+  name: string
+  class_id: number
+  class: string
+  unexcused: number
+  pending: number
+  dates: string[]
+}
+
+export interface ReportEvent {
+  date: string
+  class_id: number
+  class: string
+  student_id: number
+  name: string
+  arrived_lesson: number | null
+  left_lesson: number | null
+  leave_permission: 'permitted' | 'unpermitted' | null
+}
+
+export interface WeeklyReport {
+  from: string
+  to: string
+  school_days: string[]
+  complete: boolean
+  totals: ReportCounters & { classes: number; students: number; class_days_expected: number; class_days_surveyed: number }
+  days: ReportDay[]
+  classes: ReportClass[]
+  students: ReportStudent[]
+  students_total: number
+  events: ReportEvent[]
+}
+
+export interface WeeklyReportResponse {
+  week: { from: string; to: string; previous: string; next: string | null; is_current: boolean }
+  version: 'live' | 'snapshot'
+  snapshot: { generated_at: string; changed_since: number } | null
+  report: WeeklyReport
+}
+
+function weekQuery(week: string | null, snapshot: boolean, extra = ''): string {
+  const parts = [week === null ? '' : `week=${week}`, snapshot ? 'version=snapshot' : '', extra].filter((part) => part !== '')
+  return parts.length === 0 ? '' : `?${parts.join('&')}`
+}
+
 export const adminApi = {
+  weeklyReport: (week: string | null, snapshot: boolean) =>
+    request<WeeklyReportResponse>('GET', `/admin/reports/weekly${weekQuery(week, snapshot)}`),
+  /** Excel файлының мекенжайы; `names: false` аты-жөнсіз жиынтық. */
+  weeklyReportExportUrl: (week: string, snapshot: boolean, names: boolean) =>
+    `/api/admin/reports/weekly/export${weekQuery(week, snapshot, names ? '' : 'names=0')}`,
+
   dailySummary: (date: string | null) =>
     request<DailySummary>('GET', date === null ? '/admin/daily-summary' : `/admin/daily-summary?date=${date}`),
 

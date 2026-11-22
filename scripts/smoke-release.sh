@@ -151,6 +151,17 @@ fi
 grep -q '"shifts":\[' "$WORK/summary.json" || fail "күнделікті жиынтық жауабы қате"
 [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -H 'Accept: application/json' -H "Origin: $BASE" "$BASE/api/admin/daily-summary?date=2099-01-01")" = 422 ] || fail "болашақ күннің жиынтығы ашылды"
 [ "$(curl -s -o /dev/null -w '%{http_code}' -H 'Accept: application/json' "$BASE/api/admin/daily-summary")" = 401 ] || fail "жиынтық кірмеген адамға ашық"
+# Апталық есеп (8-кезең): бет дерегі, Excel-дің екі нұсқасы, үлгі файл, бекіту командасы.
+[ "$(curl -s -o "$WORK/weekly.json" -w '%{http_code}' -b "$JAR" -H 'Accept: application/json' -H "Origin: $BASE" "$BASE/api/admin/reports/weekly")" = 200 ] || fail "апталық есеп ашылмады"
+grep -q '"class_days_expected"' "$WORK/weekly.json" || fail "апталық есеп жауабы қате"
+for names in 1 0; do
+  [ "$(curl -s -o "$WORK/weekly-$names.xlsx" -w '%{http_code}' -b "$JAR" -H "Origin: $BASE" "$BASE/api/admin/reports/weekly/export?names=$names")" = 200 ] || fail "апталық есептің Excel файлы жүктелмеді (names=$names)"
+  python3 -c "import sys, zipfile; z = zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; assert len([n for n in z.namelist() if n.startswith('xl/worksheets/sheet')]) == int(sys.argv[2])" "$WORK/weekly-$names.xlsx" "$([ "$names" = 1 ] && echo 5 || echo 3)" || fail "апталық есептің Excel файлы бүлінген (names=$names)"
+done
+[ "$(curl -s -o /dev/null -w '%{http_code}' -H 'Accept: application/json' "$BASE/api/admin/reports/weekly/export")" = 401 ] || fail "есеп файлы кірмеген адамға ашық"
+[ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/templates/oqushylar-ulgi.xlsx")" = 200 ] || fail "оқушылар үлгісі жоқ"
+php artisan qatysu:freeze-reports >/dev/null || fail "есепті бекіту командасы құлады"
+php artisan schedule:list | grep -q "qatysu:freeze-reports" || fail "есепті бекіту кестеде жоқ"
 
 echo "== Сақтық көшірме: жасау, жүктеу, қалпына келтіру, кесте"
 php artisan qatysu:backup | grep -q "КӨШІРМЕ ЖАСАЛДЫ" || fail "көшірме жасалмады"

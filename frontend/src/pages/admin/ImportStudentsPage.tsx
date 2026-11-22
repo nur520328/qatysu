@@ -51,6 +51,9 @@ export function ImportStudentsPage() {
           <Link className="back" to="/admin/classes">← {t('nav.classes')}</Link>
           <h1 className="page__title">{t('import.studentsTitle')}</h1>
         </div>
+        <div className="row">
+          <a className="back" href="/templates/oqushylar-ulgi.xlsx" download>{t('importT.template')}</a>
+        </div>
       </header>
       <p className="muted">{t('import.studentsIntro')}</p>
 

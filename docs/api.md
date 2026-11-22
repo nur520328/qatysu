@@ -304,3 +304,21 @@ Frontend пен backend арасындағы келісім. Екі жақ та 
 - `surveyed: false` — кезекші сыныпты араламаған. Ондай сыныпта мұғалім не жетекші тіркегендер саналады, қалғаны `unmarked`.
 - `next_school_day` бүгіннен аспайды. Сыныптар сол күн кіретін оқу жылынан; оқушы саны сол күнгі тіркелу бойынша.
 - `ended`: сол күннің сменасы аяқталды ма (өткен күн үшін әрқашан `true`).
+
+## Апталық есеп (`/api/admin/reports/weekly`, тек `admin`)
+
+Ережелері: `docs/кезең-8-жоспар.md`. Жауаптар кэштелмейді (`Cache-Control: no-store`).
+
+| Әдіс | Жол | Сұраныс | Жауап | Қателер |
+|---|---|---|---|---|
+| GET | `/reports/weekly?week=YYYY-MM-DD&version=live\|snapshot` | `week` — аптаның кез келген күні (болмаса осы апта); `version` болмаса `live` | `{"week": {"from", "to", "previous", "next", "is_current"}, "version", "snapshot": {"generated_at", "changed_since"}\|null, "report"}` | `422 invalid_date`, `422 date_in_future`, `422 validation_failed`, `404 not_found` (бекітілген нұсқа жоқ) |
+| GET | `/reports/weekly/export?week=&version=&names=0\|1` | `names=0` — аты-жөнсіз жиынтық; болмаса толық | `.xlsx` файл (`qatysu-apta-<дүйсенбі>[-jiyntyq].xlsx`), сұраған адамның тілінде | сол қателер |
+
+- `report`: `{"type": "weekly", "from", "to", "school_days": [өткен оқу күндері], "complete", "totals", "days": [day], "classes": [class], "students": [student], "students_total", "events": [event]}`.
+- Санауыштар (`totals`, `day`, `class` ішінде): `marked`, `absent_marked` (тек кезекші аралаған сынып-күндер; пайыздың негізі), `absent`, `sick`, `excused`, `unexcused`, `pending`, `late`, `left`, `left_permitted`, `left_unpermitted`, `left_pending`, `attendance_pct` = (`marked` − `absent_marked`) ÷ `marked` × 100, бір ондық таңба; `marked` = 0 болса `null` («дерек жоқ»).
+- `totals` қосымша: `classes`, `students`, `class_days_expected`, `class_days_surveyed`. `day` қосымша: `date`, `class_days_expected`, `class_days_surveyed`.
+- `class`: `{"id", "name", "shift", "homeroom", "students", "days_expected", "days_surveyed", "missing_dates": [аралынбаған күндер]}` + санауыштар.
+- `student` (себепсіз не себебі анықталмаған күні барлар, ең көбі 50, себепсіз күн саны бойынша кемімелі): `{"id", "name", "class_id", "class", "unexcused", "pending", "dates"}`. `students_total` — шектеусіз саны.
+- `event` (тіркелген кешігу мен кету): `{"date", "class_id", "class", "student_id", "name", "arrived_lesson", "left_lesson", "leave_permission"}`.
+- `snapshot.changed_since` — есеп бекітілгеннен кейін сол аптаның қанша қатысу жазбасы қосылды не өзгерді.
+- Бекіту: `qatysu:freeze-reports` сағат сайын (жоспарлағыш); аптаның соңғы оқу күнінің түстен кейінгі сменасы біткен соң. Аты-жөнімен файлды жүктеу серверлік журналға жазылады.

@@ -1137,3 +1137,53 @@ button.tile {
   color: var(--danger-ink);
   font-weight: 500;
 }
+
+/* ---- Есептер ---- */
+
+/* Мәтін ішіндегі сілтемеге ұқсас батырма (нұсқаны ауыстыру). */
+.linkbtn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Есепті басып шығару не PDF етіп сақтау: мәзір мен батырмалар жасырылады, кестелер бетке сыяды. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .report {
+    font-size: 10pt;
+  }
+
+  .report .tablewrap {
+    overflow: visible;
+    border: 0;
+  }
+
+  .report .table th,
+  .report .table td {
+    padding: 0.2rem 0.4rem;
+    border: 1px solid #999;
+  }
+
+  .report .table tr,
+  .report .stat,
+  .report .summary__list li {
+    break-inside: avoid;
+  }
+
+  .report .group__title {
+    break-after: avoid;
+  }
+
+  .report a {
+    color: inherit;
+    text-decoration: none;
+  }
+}

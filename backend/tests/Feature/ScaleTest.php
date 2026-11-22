@@ -128,6 +128,51 @@ class ScaleTest extends TestCase
         $this->assertLessThan(80_000, strlen($summary['response']->getContent()), 'жиынтық жауабы тым үлкен: '.strlen($summary['response']->getContent()));
     }
 
+    public function test_weekly_report_stays_cheap_for_a_full_school_week(): void
+    {
+        $this->travelTo(CarbonImmutable::create(2026, 11, 20, 19, 0));
+        $this->seed(DemoSeeder::class);
+        $admin = User::factory()->admin()->create();
+
+        // Толық апта: 44 сынып × 5 күн, әр сынып-күнде 2 оқушы жоқ (1 себепсіз), 1 кешіккен, 1 кеткен.
+        $records = [];
+        foreach (SchoolClass::query()->get() as $class) {
+            $students = DB::table('student_enrollments')->where('class_id', $class->id)->orderBy('student_id')->pluck('student_id');
+            foreach (['2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19', '2026-11-20'] as $date) {
+                $roundId = DB::table('attendance_rounds')->insertGetId([
+                    'class_id' => $class->id, 'date' => $date, 'shift' => $class->shift->value, 'client_uuid' => (string) Str::uuid(),
+                    'revision' => 1, 'received_late' => false, 'duty_done' => true, 'created_at' => now(), 'updated_at' => now(),
+                ]);
+                foreach ($students as $i => $studentId) {
+                    $records[] = [
+                        'round_id' => $roundId, 'student_id' => $studentId, 'round_status' => $i < 3 ? 'absent' : 'present', 'round_status_source' => 'duty',
+                        'arrived_lesson' => $i === 2 ? 2 : null, 'left_lesson' => $i === 3 ? 5 : null, 'absence_reason' => $i === 0 ? 'unexcused' : null,
+                        'created_at' => now(), 'updated_at' => now(),
+                    ];
+                }
+            }
+        }
+        foreach (array_chunk($records, 500) as $chunk) {
+            DB::table('attendance_records')->insert($chunk);
+        }
+
+        $weekly = $this->measure(fn () => $this->actingAs($admin)->getJson('/api/admin/reports/weekly')->assertOk());
+        $totals = $weekly['response']->json('report.totals');
+        $this->assertEquals([220, 220, 5500, 440, 92.0, 220, 220, 220], [
+            $totals['class_days_expected'], $totals['class_days_surveyed'], $totals['marked'], $totals['absent'], $totals['attendance_pct'],
+            $totals['unexcused'], $totals['late'], $totals['left'],
+        ]);
+        // 88 оқушының себепсіз не анықталмаған күні бар, бірақ тізім 50-мен шектеледі.
+        $this->assertSame([50, 88], [count($weekly['response']->json('report.students')), $weekly['response']->json('report.students_total')]);
+
+        $this->assertLessThanOrEqual(20, $weekly['queries'], "апталық есеп: сұраныс тым көп ({$weekly['queries']})");
+        $this->assertLessThan(1500, $weekly['ms'], "апталық есеп: тым баяу ({$weekly['ms']} мс)");
+
+        $export = $this->measure(fn () => $this->actingAs($admin)->get('/api/admin/reports/weekly/export')->assertOk());
+        $this->assertLessThan(3000, $export['ms'], "апталық есептің Excel файлы: тым баяу ({$export['ms']} мс)");
+        $this->assertLessThan(200_000, strlen($export['response']->getContent()));
+    }
+
     public function test_full_school_student_file_imports_without_per_row_queries(): void
     {
         $this->travelTo(CarbonImmutable::create(2026, 11, 20, 10));
