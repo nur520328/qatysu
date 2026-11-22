@@ -18,6 +18,8 @@ use App\Http\Controllers\Homeroom\DayController;
 use App\Http\Controllers\Homeroom\MonthController;
 use App\Http\Controllers\Teacher\AttendanceController;
 use App\Http\Controllers\Teacher\HomeroomController;
+use App\Http\Controllers\Telegram\LinkController;
+use App\Http\Controllers\Telegram\WebhookController;
 use Illuminate\Support\Facades\Route;
 
 // Келісім: docs/api.md. Алдымен құжат өзгереді, содан кейін осы файл.
@@ -67,6 +69,8 @@ Route::middleware(['auth:sanctum', 'account'])->group(function () {
         Route::delete('duty-codes/{code}', [DutyCodeController::class, 'destroy']);
 
         Route::get('daily-summary', [DailySummaryController::class, 'show']);
+        Route::get('telegram', [LinkController::class, 'adminShow']);
+        Route::post('telegram/setup', [LinkController::class, 'adminSetup'])->middleware('throttle:10,1');
         Route::get('reports/{type}', [ReportController::class, 'show'])->whereIn('type', ['weekly', 'monthly']);
         Route::get('reports/{type}/export', [ReportController::class, 'export'])->whereIn('type', ['weekly', 'monthly']);
 
@@ -94,6 +98,13 @@ Route::middleware(['auth:sanctum', 'account'])->group(function () {
         Route::delete('students/{student}/leave', [AttendanceController::class, 'undoLeave']);
     });
 
+    // Telegram ботпен байланыстыру: кез келген кірген қызметкер өз аккаунтына.
+    Route::middleware('role:admin,teacher')->prefix('telegram')->group(function () {
+        Route::get('/', [LinkController::class, 'show']);
+        Route::post('link', [LinkController::class, 'store'])->middleware('throttle:10,1');
+        Route::delete('link', [LinkController::class, 'destroy']);
+    });
+
     // Сынып жетекшісі (өз сыныбы) және завуч (кез келген сынып). Кімге не рұқсат екенін контроллер тексереді.
     Route::middleware('role:admin,teacher')->prefix('homeroom')->group(function () {
         Route::get('pending', [DayController::class, 'pending']);
@@ -117,3 +128,6 @@ Route::prefix('duty')->group(function () {
     // Смена кезінде интернетсіз белгіленген дерек сол күннің соңына дейін қабылданады.
     Route::middleware('duty:sync')->put('classes/{class}/round', [RoundController::class, 'save']);
 });
+
+// Telegram серверінен келетін хабарлар: кіру жоқ, құпия тақырыппен тексеріледі (docs/кезең-10-жоспар.md, 4-шешім).
+Route::post('telegram/webhook', WebhookController::class)->middleware('throttle:240,1');

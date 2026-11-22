@@ -50,4 +50,15 @@ class Setting extends Model
             array_combine(array_keys(self::DEFAULTS), array_keys(self::DEFAULTS)),
         );
     }
+
+    /** Сан емес қызметтік мән (мысалы, боттың атауы). `DEFAULTS`-қа кірмейді, баптау бетінде көрінбейді. */
+    public static function text(string $key): ?string
+    {
+        return self::query()->find($key)?->value;
+    }
+
+    public static function putText(string $key, ?string $value): void
+    {
+        $value === null ? self::query()->whereKey($key)->delete() : self::query()->updateOrCreate(['key' => $key], ['value' => $value]);
+    }
 }

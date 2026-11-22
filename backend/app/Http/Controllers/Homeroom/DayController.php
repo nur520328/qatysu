@@ -142,9 +142,7 @@ class DayController extends Controller
         $rounds = AttendanceRound::query()->whereIn('class_id', $classes->keys())
             ->whereDate('date', '>=', $from->toDateString())->whereDate('date', '<=', $today->toDateString())->get()->keyBy('id');
         $records = AttendanceRecord::query()->whereIn('round_id', $rounds->keys())
-            ->where(fn ($q) => $q
-                ->where(fn ($a) => $a->where('round_status', RoundStatus::Absent)->whereNull('arrived_lesson')->whereNull('left_lesson')->whereNull('absence_reason'))
-                ->orWhere(fn ($l) => $l->whereNotNull('left_lesson')->whereNull('leave_permission')))
+            ->pendingDecision()
             ->get();
         $students = Student::query()->whereIn('id', $records->pluck('student_id'))->get()->keyBy('id');
         $names = StudentNames::labels($students, $records->mapWithKeys(static fn (AttendanceRecord $r): array => [$r->student_id => $rounds[$r->round_id]->class_id])->all(), $today);

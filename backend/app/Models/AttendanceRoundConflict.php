@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Аралауы бар сыныпқа басқа планшеттен келген жеке аралау. Үстінен жазылмайды, жойылмайды:
@@ -18,5 +19,10 @@ class AttendanceRoundConflict extends Model
     protected function casts(): array
     {
         return ['date' => 'date', 'client_time' => 'datetime', 'absent_student_ids' => 'array', 'resolved_at' => 'datetime'];
+    }
+
+    public function schoolClass(): BelongsTo
+    {
+        return $this->belongsTo(SchoolClass::class, 'class_id');
     }
 }

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\Locale;
 use App\Enums\Role;
 use App\Support\KazakhSort;
+use Carbon\CarbonImmutable;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -21,9 +22,12 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
  * @property bool $must_change_password
  * @property bool $is_active
  * @property string|null $telegram_chat_id
+ * @property string|null $telegram_link_hash
+ * @property CarbonImmutable|null $telegram_link_expires_at
+ * @property CarbonImmutable|null $telegram_linked_at
  */
 #[Fillable(['full_name', 'login', 'password', 'role', 'locale', 'must_change_password', 'is_active'])]
-#[Hidden(['password', 'telegram_chat_id'])]
+#[Hidden(['password', 'telegram_chat_id', 'telegram_link_hash'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -39,6 +43,8 @@ class User extends Authenticatable
             'password' => 'hashed',
             'role' => Role::class,
             'locale' => Locale::class,
+            'telegram_link_expires_at' => 'immutable_datetime',
+            'telegram_linked_at' => 'immutable_datetime',
             'must_change_password' => 'boolean',
             'is_active' => 'boolean',
         ];

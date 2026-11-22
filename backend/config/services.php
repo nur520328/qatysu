@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    // Telegram бот (docs/кезең-10-жоспар.md). Токен тек сервердегі .env файлында.
+    'telegram' => [
+        'token' => env('TELEGRAM_BOT_TOKEN'),
+        'api' => env('TELEGRAM_API_URL', 'https://api.telegram.org'),
+    ],
+
 ];

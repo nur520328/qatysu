@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\RoundStatus;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -46,6 +47,14 @@ class AttendanceRecord extends Model
     public function round(): BelongsTo
     {
         return $this->belongsTo(AttendanceRound::class, 'round_id');
+    }
+
+    /** Жетекшінің шешімін күтіп тұрған жазбалар (`pendingKind()` ережесінің сұраныс түрі). */
+    public function scopePendingDecision(Builder $query): void
+    {
+        $query->where(fn (Builder $q) => $q
+            ->where(fn (Builder $a) => $a->where('round_status', RoundStatus::Absent)->whereNull('arrived_lesson')->whereNull('left_lesson')->whereNull('absence_reason'))
+            ->orWhere(fn (Builder $l) => $l->whereNotNull('left_lesson')->whereNull('leave_permission')));
     }
 
     /** Күні бойы жоқ: «жоқ» деп белгіленген, келуі де, кетуі де тіркелмеген. */

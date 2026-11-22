@@ -14,3 +14,6 @@ Schedule::command('qatysu:backup')->dailyAt('02:30')->withoutOverlapping();
 
 // Аяқталған аптаның есебін бекіту (соңғы оқу күнінің түстен кейінгі сменасы біткен соң бірінші тексерісте).
 Schedule::command('qatysu:freeze-reports')->hourlyAt(5)->withoutOverlapping();
+
+// Telegram хабарлары: не хабарлау керегін анықтап, жібереді. Бот қосылмаған болса ештеңе істемейді.
+Schedule::command('qatysu:notify')->everyMinute()->withoutOverlapping(5);

@@ -16,6 +16,7 @@ class DataResetService
 {
     /** Өшірілетін кестелер, сыртқы кілттерге сай ретпен (тәуелдісі алда). */
     public const CLEARED = [
+        'notification_log',
         'attendance_audit',
         'attendance_round_conflicts',
         'attendance_records',
