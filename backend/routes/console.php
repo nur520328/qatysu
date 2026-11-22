@@ -11,3 +11,6 @@ Schedule::call(fn () => app(DutyCodeService::class)->forgetExpired())->dailyAt('
 
 // Түнгі сақтық көшірме: сабақ жоқ, сайтта ешкім жұмыс істемейтін уақыт.
 Schedule::command('qatysu:backup')->dailyAt('02:30')->withoutOverlapping();
+
+// Аяқталған аптаның есебін бекіту (соңғы оқу күнінің түстен кейінгі сменасы біткен соң бірінші тексерісте).
+Schedule::command('qatysu:freeze-reports')->hourlyAt(5)->withoutOverlapping();

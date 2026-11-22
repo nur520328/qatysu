@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\SchoolClassController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\TeacherController;
+use App\Http\Controllers\Admin\WeeklyReportController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Duty\RoundController;
 use App\Http\Controllers\Duty\SessionController;
@@ -65,6 +66,8 @@ Route::middleware(['auth:sanctum', 'account'])->group(function () {
         Route::delete('duty-codes/{code}', [DutyCodeController::class, 'destroy']);
 
         Route::get('daily-summary', [DailySummaryController::class, 'show']);
+        Route::get('reports/weekly', [WeeklyReportController::class, 'show']);
+        Route::get('reports/weekly/export', [WeeklyReportController::class, 'export']);
 
         Route::get('round-conflicts', [RoundConflictController::class, 'index']);
         Route::post('round-conflicts/{conflict}/resolve', [RoundConflictController::class, 'resolve']);

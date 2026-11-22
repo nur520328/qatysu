@@ -73,7 +73,7 @@ class InstallBackupTest extends TestCase
         $this->assertLessThan(450, mb_strlen($output), $output);
 
         $history = json_decode((string) file_get_contents(Install::historyPath()), true);
-        $this->assertSame(['tables' => 20, 'users' => 1, 'charset' => 'utf8mb4'], $history['before']);
+        $this->assertSame(['tables' => 21, 'users' => 1, 'charset' => 'utf8mb4'], $history['before']);
         $this->assertSame(1, $history['migrations_ran']);
         $this->assertSame('ok', $history['result']);
 

@@ -3,7 +3,6 @@
 namespace App\Services\Attendance;
 
 use App\Enums\Shift;
-use App\Models\AcademicYear;
 use App\Models\AttendanceRecord;
 use App\Models\AttendanceRound;
 use App\Models\AttendanceRoundConflict;
@@ -27,6 +26,7 @@ class DailySummaryService
     public function __construct(
         private readonly CalendarService $calendar,
         private readonly DutyCodeService $codes,
+        private readonly ClassScope $scope,
     ) {}
 
     /** @return array<string, mixed> */
@@ -37,7 +37,7 @@ class DailySummaryService
         $today = CarbonImmutable::today();
 
         $rounds = AttendanceRound::query()->whereDate('date', $day)->get()->keyBy('class_id');
-        $classes = $this->classes($date, $rounds->keys()->all());
+        $classes = $this->scope->forDay($date, $rounds->keys()->all());
         $rosterSizes = StudentEnrollment::query()->whereIn('class_id', $classes->keys())->activeOn($date)
             ->selectRaw('class_id, count(*) as total')->groupBy('class_id')->pluck('total', 'class_id');
         $records = AttendanceRecord::query()->whereIn('round_id', $rounds->pluck('id'))->get()->groupBy('round_id');
@@ -74,26 +74,6 @@ class DailySummaryService
             'open_conflicts' => AttendanceRoundConflict::query()->whereDate('date', $day)->whereNull('resolved_at')->count(),
             'shifts' => array_map(fn (Shift $shift): array => $this->shiftBlock($date, $shift, $rows[$shift->value] ?? []), Shift::cases()),
         ];
-    }
-
-    /**
-     * Сол күн кіретін оқу жылының сыныптары. Жабылған сынып сол күні жазбасы болса ғана кіреді.
-     *
-     * @param  list<int>  $classIdsWithRounds
-     * @return Collection<int, SchoolClass>
-     */
-    private function classes(CarbonImmutable $date, array $classIdsWithRounds): Collection
-    {
-        $year = AcademicYear::query()->whereDate('start_date', '<=', $date->toDateString())
-            ->whereDate('end_date', '>=', $date->toDateString())->orderByDesc('is_current')->first();
-        if ($year === null) {
-            return collect();
-        }
-        $classes = SchoolClass::query()->where('academic_year_id', $year->id)
-            ->where(fn ($q) => $q->where('is_active', true)->orWhereIn('id', $classIdsWithRounds))
-            ->with('homeroom')->get();
-
-        return collect(KazakhSort::sort($classes, static fn (SchoolClass $c): array => [sprintf('%02d', $c->grade), $c->letter]))->keyBy('id');
     }
 
     /**

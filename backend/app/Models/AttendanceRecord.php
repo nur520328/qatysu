@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\RoundStatus;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Бір оқушының бір күнгі қатысу жазбасы. Өрістер мағынасы: docs/жобалық-құжат.md, 4-бөлім.
@@ -40,6 +41,11 @@ class AttendanceRecord extends Model
     public function isLockedForDuty(): bool
     {
         return $this->round_status_source === 'staff' || $this->arrived_lesson !== null || $this->left_lesson !== null || $this->absence_reason !== null;
+    }
+
+    public function round(): BelongsTo
+    {
+        return $this->belongsTo(AttendanceRound::class, 'round_id');
     }
 
     /** Күні бойы жоқ: «жоқ» деп белгіленген, келуі де, кетуі де тіркелмеген. */

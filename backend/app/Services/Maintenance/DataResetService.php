@@ -22,6 +22,7 @@ class DataResetService
         'attendance_rounds',
         'duty_sessions',
         'duty_codes',
+        'reports',
         'student_enrollments',
         'students',
         'classes',
