@@ -123,7 +123,12 @@
     "reason_needs_full_absence": "只有全天缺勤的学生才能填写原因。",
     "permission_needs_leave": "只有中途离开的学生才能填写是否批准。",
     "date_not_editable": "这一天不能修改。",
-    "date_in_future": "不能打开未来的日期。"
+    "date_in_future": "不能打开未来的日期。",
+    "telegram_not_ready": "机器人尚未启用。请告知教务主任。",
+    "telegram_token_missing": "服务器上没有写入机器人的令牌。",
+    "telegram_token_invalid": "令牌错误：Telegram 不接受。请检查 .env 文件中的令牌。",
+    "telegram_unreachable": "无法连接 Telegram 服务器。请稍候再试。",
+    "telegram_rejected": "Telegram 拒绝了请求。"
   },
   "calendar": {
     "title": "校历",
@@ -627,5 +632,29 @@
     "left": "已离开本班",
     "empty": "本月班里没有学生。",
     "note": "出勤率只按值日生巡查过的日期计算。迟到和早退只包括教师登记过的情况。"
+  },
+  "telegram": {
+    "title": "Telegram 通知",
+    "intro": "当您的班级被巡查、有学生早退或有记录等待处理时，通知会发到 Telegram。通知中不写学生姓名。",
+    "link": "绑定",
+    "step1": "点击下面的按钮打开 Telegram，在那里点击“Start”（开始）。",
+    "open": "打开 Telegram（@{{bot}}）",
+    "waiting": "正在等待您在 Telegram 中点击“Start”…… 链接 15 分钟内有效。",
+    "privacy": "不要把链接发给别人：打开它的人会收到您的通知。",
+    "linked": "已绑定 Telegram",
+    "linkedHint": "要停止通知，请点击“解除绑定”或向机器人发送 /stop。",
+    "unlink": "解除绑定",
+    "adminTitle": "Telegram 机器人",
+    "adminIntro": "机器人向教师和您发送简短通知。通知中既没有学生姓名，也没有原因。",
+    "tokenMissing": "服务器上还没有写入机器人的令牌。需要把它写到主机上 .env 文件的 TELEGRAM_BOT_TOKEN 一行。不要把令牌发给任何人。",
+    "notSetUp": "令牌已写入，但机器人尚未启用。",
+    "setup": "启用机器人",
+    "setupAgain": "重新检查",
+    "setupDone": "机器人已启用。",
+    "botName": "机器人：@{{bot}}",
+    "webhookAt": "上次检查时间：{{when}}",
+    "linkedUsers": "已绑定的员工：{{linked}} / {{total}}",
+    "sent": "最近 24 小时已发送通知：{{sent}}，未发送：{{failed}}",
+    "rejected": "Telegram 的回复：{{detail}}"
   }
 }

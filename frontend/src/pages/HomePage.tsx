@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { User } from '../api/client'
 import { homeroomApi } from '../api/staff'
+import { TelegramPanel } from '../components/TelegramPanel'
 import { teacherApi } from '../api/teacher'
 import { useAuth } from '../auth/context'
 import { Shell } from '../components/Shell'
@@ -75,6 +76,8 @@ export function HomePage({ user }: { user: User }) {
             </section>
           </>
         )}
+
+        <TelegramPanel />
       </section>
     </Shell>
   )

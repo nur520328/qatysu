@@ -310,7 +310,7 @@ class Install extends Command
         return [$exit === self::SUCCESS, $lines];
     }
 
-    /** Бот 10-кезеңде қосылады; мұнда тек хостингтен Telegram-ға шығу мүмкін бе, сол тексеріледі. */
+    /** Хостингтен Telegram-ға шығу мүмкін бе: бот (docs/кезең-10-жоспар.md) осыған тәуелді. Токен мұнда қолданылмайды. */
     private function telegramStatus(): string
     {
         try {

@@ -3,6 +3,10 @@ import type { FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { adminApi } from '../../api/admin'
 import type { Settings } from '../../api/admin'
+import { ApiError } from '../../api/client'
+import { telegramApi } from '../../api/telegram'
+import type { TelegramAdminState } from '../../api/telegram'
+import { TelegramPanel } from '../../components/TelegramPanel'
 import { dayMonthTime } from '../../lib/dates'
 import { useErrorText } from '../../lib/errors'
 import { useLoad } from '../../lib/useLoad'
@@ -56,6 +60,7 @@ function SettingsForm({ initial }: { initial: Settings }) {
   const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [botVersion, setBotVersion] = useState(0)
 
   function change(key: keyof Settings, value: string) {
     setSaved(false)
@@ -111,6 +116,9 @@ function SettingsForm({ initial }: { initial: Settings }) {
         <button className="btn btn--strong" type="submit" disabled={busy}>{busy ? t('common.saving') : t('common.save')}</button>
       </form>
       <BackupPanel />
+      {/* Бот қосылған сәтте жеке «Байланыстыру» бөлігі бетті жаңартпай-ақ пайда болуы үшін. */}
+      <TelegramAdminPanel onSetup={() => setBotVersion((v) => v + 1)} />
+      <TelegramPanel key={botVersion} />
     </section>
   )
 }
@@ -189,6 +197,73 @@ function BackupPanel() {
         </>
       )}
       <p className="muted">{t('backup.restoreNote')}</p>
+    </section>
+  )
+}
+
+/** Ботты қосу және оның күйі. Токен сайтта енгізілмейді: ол тек сервердегі .env файлында (docs/кезең-10-жоспар.md, 2 және 3-шешім). */
+function TelegramAdminPanel({ onSetup }: { onSetup: () => void }) {
+  const { t, i18n } = useTranslation()
+  const errorText = useErrorText()
+  const { data: loaded, error } = useLoad(telegramApi.adminState)
+  const [updated, setUpdated] = useState<TelegramAdminState | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [failure, setFailure] = useState<unknown>(null)
+  const [done, setDone] = useState(false)
+  const data = updated ?? loaded
+
+  if (data === undefined) {
+    return error === null ? null : <p className="alert" role="alert">{errorText(error)}</p>
+  }
+
+  const setup = async () => {
+    setBusy(true)
+    setFailure(null)
+    setDone(false)
+    try {
+      setUpdated(await telegramApi.adminSetup())
+      setDone(true)
+      onSetup()
+    } catch (e) {
+      setFailure(e)
+    } finally {
+      setBusy(false)
+    }
+  }
+  const detail = failure instanceof ApiError ? failure.detail : null
+
+  return (
+    <section className="panel form" aria-label={t('telegram.adminTitle')}>
+      <h2 className="panel__title">{t('telegram.adminTitle')}</h2>
+      <p className="muted">{t('telegram.adminIntro')}</p>
+      {failure !== null && (
+        <p className="alert" role="alert">
+          {errorText(failure)}{detail !== null && <> {t('telegram.rejected', { detail })}</>}
+        </p>
+      )}
+      {done && <p className="note" role="status">{t('telegram.setupDone')}</p>}
+
+      {!data.token_set ? (
+        <p className="alert">{t('telegram.tokenMissing')}</p>
+      ) : (
+        <>
+          {data.username === null ? (
+            <p>{t('telegram.notSetUp')}</p>
+          ) : (
+            <ul className="summary__list">
+              <li>{t('telegram.botName', { bot: data.username })}</li>
+              {data.webhook_at !== null && <li>{t('telegram.webhookAt', { when: dayMonthTime(data.webhook_at, i18n.language) })}</li>}
+              <li>{t('telegram.linkedUsers', { linked: data.linked_users, total: data.active_users })}</li>
+              <li>{t('telegram.sent', { sent: data.sent_24h, failed: data.failed_24h })}</li>
+            </ul>
+          )}
+          <div className="row">
+            <button className={data.username === null ? 'btn btn--strong' : 'btn'} type="button" disabled={busy} onClick={() => void setup()}>
+              {t(data.username === null ? 'telegram.setup' : 'telegram.setupAgain')}
+            </button>
+          </div>
+        </>
+      )}
     </section>
   )
 }

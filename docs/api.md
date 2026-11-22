@@ -332,3 +332,20 @@ Frontend пен backend арасындағы келісім. Екі жақ та 
 
 - `student`: `{"id", "name", "in_class_now", "dates": [күні бойы жоқ болған күндері]}` + санауыштар (жоғарыдағыдай). Ай ішінде сыныпта болған барлық оқушы; тек осы сыныптың жазбалары саналады.
 - Әрқашан қазіргі күй: бекітілмейді.
+
+## Telegram бот
+
+Ережелері: `docs/кезең-10-жоспар.md`. Токен тек сервердегі `.env` файлында (`TELEGRAM_BOT_TOKEN`); API арқылы берілмейді де, қайтарылмайды да.
+
+| Әдіс | Жол | Кімге | Сұраныс | Жауап | Қателер |
+|---|---|---|---|---|---|
+| GET | `/api/telegram` | `admin`, `teacher` | — | `{"ready", "bot_username", "linked", "linked_at"}` | |
+| POST | `/api/telegram/link` | `admin`, `teacher` | — | `201 {"url": "https://t.me/<бот>?start=<код>", "expires_at"}` (15 минут, бір реттік; жаңасы ескісін жарамсыз етеді) | `409 telegram_not_ready` |
+| DELETE | `/api/telegram/link` | `admin`, `teacher` | — | күй (жоғарыдағыдай) | |
+| GET | `/api/admin/telegram` | `admin` | — | `{"token_set", "username", "webhook_at", "linked_users", "active_users", "sent_24h", "failed_24h"}` | |
+| POST | `/api/admin/telegram/setup` | `admin` | — | сол күй; `getMe` + `setWebhook` орындалады | `422 telegram_token_missing`, `telegram_token_invalid`, `telegram_unreachable`, `telegram_rejected` (+ `detail`: Telegram-ның жауабы) |
+| POST | `/api/telegram/webhook` | Telegram сервері | Telegram `Update`; `X-Telegram-Bot-Api-Secret-Token` тақырыбы міндетті | `{"ok": true}` | `403 forbidden` (құпия сәйкес емес не токен жоқ) |
+
+- Webhook тек жеке чаттағы `/start <код>` (байланыстыру) мен `/stop` (ажырату) командаларын өңдейді; басқа мәтінге қысқа анықтама қайтарады; топтық чатта үнсіз.
+- Хабарлар сұраныс ішінде жіберілмейді: `qatysu:notify` (минут сайын) `notification_log` кестесіне жазып, жібереді. Түрлері: `round_absent`, `left`, `pending` (жетекшіге); `shift_summary`, `conflict`, `report_weekly`, `report_monthly` (завучқа; есепке аты-жөнсіз Excel тіркеледі).
+- Ешбір хабарда оқушының аты-жөні де, себебі де болмайды.

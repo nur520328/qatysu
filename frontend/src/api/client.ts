@@ -20,12 +20,15 @@ export interface User {
 export class ApiError extends Error {
   readonly code: string
   readonly status: number
+  /** Сервер қатемен бірге қайтарған қосымша мәлімет (мысалы, Telegram-ның жауабы). Аударылмайды. */
+  readonly detail: string | null
 
-  constructor(code: string, status: number) {
+  constructor(code: string, status: number, detail: string | null = null) {
     super(code)
     this.name = 'ApiError'
     this.code = code
     this.status = status
+    this.detail = detail
   }
 }
 
@@ -84,7 +87,8 @@ async function send<T>(method: string, path: string, body: BodyInit | undefined,
 
   if (!response.ok) {
     const raw = (payload as { code?: unknown } | null)?.code
-    throw new ApiError(typeof raw === 'string' && raw !== '' ? raw : fallbackCode(response.status), response.status)
+    const detail = (payload as { detail?: unknown } | null)?.detail
+    throw new ApiError(typeof raw === 'string' && raw !== '' ? raw : fallbackCode(response.status), response.status, typeof detail === 'string' ? detail : null)
   }
 
   return payload as T
