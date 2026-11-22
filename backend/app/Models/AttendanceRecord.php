@@ -51,7 +51,13 @@ class AttendanceRecord extends Model
     /** Күні бойы жоқ: «жоқ» деп белгіленген, келуі де, кетуі де тіркелмеген. */
     public function isFullAbsence(): bool
     {
-        return $this->round_status === RoundStatus::Absent && $this->arrived_lesson === null && $this->left_lesson === null;
+        return self::fullAbsence($this->round_status->value, $this->arrived_lesson, $this->left_lesson);
+    }
+
+    /** Сол ереже модельсіз жолдар үшін (есептер көп жазбаны модельге айналдырмай оқиды). */
+    public static function fullAbsence(string $roundStatus, ?int $arrivedLesson, ?int $leftLesson): bool
+    {
+        return $roundStatus === RoundStatus::Absent->value && $arrivedLesson === null && $leftLesson === null;
     }
 
     /** Жетекшінің қандай шешімі күтіліп тұр: permission (кетуге рұқсат), reason (жоқ болу себебі) не null. */

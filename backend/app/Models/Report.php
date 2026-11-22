@@ -21,6 +21,8 @@ class Report extends Model
 {
     public const WEEKLY = 'weekly';
 
+    public const MONTHLY = 'monthly';
+
     protected function casts(): array
     {
         return [

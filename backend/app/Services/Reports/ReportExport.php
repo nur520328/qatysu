@@ -10,15 +10,15 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 /**
- * Апталық есептің Excel файлы. Сұраған сәтте, сұраған адамның тілінде жасалады; дискіге сақталмайды
+ * Апталық не айлық есептің Excel файлы. Сұраған сәтте, сұраған адамның тілінде жасалады; дискіге сақталмайды
  * (docs/кезең-8-жоспар.md, 8 және 9-шешім). Аты-жөнсіз есепте «Оқушылар» мен «Кешігу мен кету» парақтары болмайды.
  */
-class WeeklyReportExport
+class ReportExport
 {
     private string $locale = 'kk';
 
     /**
-     * @param  array<string, mixed>  $report  `WeeklyReportService::compute()` нәтижесі не бекітілген сурет
+     * @param  array<string, mixed>  $report  `PeriodReport::compute()` нәтижесі (айлықта `weeks`, `grades` қосылған) не бекітілген сурет
      * @return string файлдың мазмұны
      */
     public function build(array $report, string $locale, bool $snapshot = false): string
@@ -29,6 +29,10 @@ class WeeklyReportExport
         $book->removeSheetByIndex(0);
 
         $this->summary($book->createSheet(), $report, $snapshot);
+        if (isset($report['weeks'])) {
+            $this->weeks($book->createSheet(), $report);
+            $this->grades($book->createSheet(), $report);
+        }
         $this->classes($book->createSheet(), $report);
         $this->missing($book->createSheet(), $report);
         if (! ($report['anonymous'] ?? false)) {
@@ -53,9 +57,9 @@ class WeeklyReportExport
     {
         $sheet->setTitle($this->t('sheet_summary'));
         $totals = $report['totals'];
-        $state = $snapshot ? 'state_snapshot' : ($report['complete'] ? 'state_live' : 'state_incomplete');
+        $state = $snapshot ? 'state_snapshot' : ($report['complete'] ? 'state_live' : 'state_incomplete_'.$report['type']);
         $rows = [
-            [$this->t('title_weekly')],
+            [$this->t('title_'.$report['type'])],
             [$this->t('period'), $this->date($report['from']).' – '.$this->date($report['to'])],
             [$this->t('state'), $this->t($state)],
             [],
@@ -95,19 +99,60 @@ class WeeklyReportExport
     }
 
     /** @param  array<string, mixed>  $report */
+    private function weeks(Worksheet $sheet, array $report): void
+    {
+        $sheet->setTitle($this->t('sheet_weeks'));
+        $rows = [[$this->t('week'), $this->t('days_expected'), $this->t('class_days'), ...$this->counterHeaders()]];
+        foreach ($report['weeks'] as $week) {
+            $rows[] = [
+                $this->shortDate($week['from']).' – '.$this->shortDate($week['to']), $week['school_days'],
+                $this->t('of', ['done' => $week['class_days_surveyed'], 'total' => $week['class_days_expected']]), ...$this->counterCells($week),
+            ];
+        }
+        $this->write($sheet, $rows);
+    }
+
+    /** @param  array<string, mixed>  $report */
+    private function grades(Worksheet $sheet, array $report): void
+    {
+        $sheet->setTitle($this->t('sheet_grades'));
+        $rows = [[$this->t('grade'), $this->t('classes'), $this->t('students'), $this->t('class_days'), ...$this->counterHeaders()]];
+        foreach ($report['grades'] as $grade) {
+            $rows[] = [
+                $grade['grade'], $grade['classes'], $grade['students'],
+                $this->t('of', ['done' => $grade['class_days_surveyed'], 'total' => $grade['class_days_expected']]), ...$this->counterCells($grade),
+            ];
+        }
+        $this->write($sheet, $rows);
+    }
+
+    /** @return list<string> */
+    private function counterHeaders(): array
+    {
+        return [
+            $this->t('attendance_pct'), $this->t('absent'), $this->t('sick'), $this->t('excused'), $this->t('unexcused'), $this->t('pending'),
+            $this->t('late'), $this->t('left'),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @return list<mixed>
+     */
+    private function counterCells(array $row): array
+    {
+        return [$this->pct($row['attendance_pct']), $row['absent'], $row['sick'], $row['excused'], $row['unexcused'], $row['pending'], $row['late'], $row['left']];
+    }
+
+    /** @param  array<string, mixed>  $report */
     private function classes(Worksheet $sheet, array $report): void
     {
         $sheet->setTitle($this->t('sheet_classes'));
-        $rows = [[
-            $this->t('class'), $this->t('shift'), $this->t('homeroom'), $this->t('students'), $this->t('days_surveyed'), $this->t('days_expected'),
-            $this->t('attendance_pct'), $this->t('absent'), $this->t('sick'), $this->t('excused'), $this->t('unexcused'), $this->t('pending'),
-            $this->t('late'), $this->t('left'),
-        ]];
+        $rows = [[$this->t('class'), $this->t('shift'), $this->t('homeroom'), $this->t('students'), $this->t('days_surveyed'), $this->t('days_expected'), ...$this->counterHeaders()]];
         foreach ($report['classes'] as $class) {
             $rows[] = [
                 $class['name'], $this->t('shift_'.$class['shift']), $class['homeroom'] ?? '', $class['students'], $class['days_surveyed'], $class['days_expected'],
-                $this->pct($class['attendance_pct']), $class['absent'], $class['sick'], $class['excused'], $class['unexcused'], $class['pending'],
-                $class['late'], $class['left'],
+                ...$this->counterCells($class),
             ];
         }
         $this->write($sheet, $rows);

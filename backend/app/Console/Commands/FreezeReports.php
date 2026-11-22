@@ -14,9 +14,9 @@ class FreezeReports extends Command
 {
     public function handle(ReportSnapshotService $snapshots): int
     {
-        $created = $snapshots->freezeDueWeekly();
+        $created = $snapshots->freezeDue();
         $this->line($created === [] ? 'Бекітілетін есеп жоқ.' : 'Бекітілді: '.implode(', ', array_map(
-            static fn ($r): string => 'апта '.$r->period_start->toDateString().' – '.$r->period_end->toDateString(), $created)));
+            static fn ($r): string => ($r->type === 'weekly' ? 'апта ' : 'ай ').$r->period_start->toDateString().' – '.$r->period_end->toDateString(), $created)));
 
         return self::SUCCESS;
     }

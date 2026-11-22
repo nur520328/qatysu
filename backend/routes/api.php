@@ -5,16 +5,17 @@ use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\DailySummaryController;
 use App\Http\Controllers\Admin\DutyCodeController;
 use App\Http\Controllers\Admin\ImportController;
+use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RoundConflictController;
 use App\Http\Controllers\Admin\SchoolClassController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\TeacherController;
-use App\Http\Controllers\Admin\WeeklyReportController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Duty\RoundController;
 use App\Http\Controllers\Duty\SessionController;
 use App\Http\Controllers\Homeroom\DayController;
+use App\Http\Controllers\Homeroom\MonthController;
 use App\Http\Controllers\Teacher\AttendanceController;
 use App\Http\Controllers\Teacher\HomeroomController;
 use Illuminate\Support\Facades\Route;
@@ -66,8 +67,8 @@ Route::middleware(['auth:sanctum', 'account'])->group(function () {
         Route::delete('duty-codes/{code}', [DutyCodeController::class, 'destroy']);
 
         Route::get('daily-summary', [DailySummaryController::class, 'show']);
-        Route::get('reports/weekly', [WeeklyReportController::class, 'show']);
-        Route::get('reports/weekly/export', [WeeklyReportController::class, 'export']);
+        Route::get('reports/{type}', [ReportController::class, 'show'])->whereIn('type', ['weekly', 'monthly']);
+        Route::get('reports/{type}/export', [ReportController::class, 'export'])->whereIn('type', ['weekly', 'monthly']);
 
         Route::get('round-conflicts', [RoundConflictController::class, 'index']);
         Route::post('round-conflicts/{conflict}/resolve', [RoundConflictController::class, 'resolve']);
@@ -96,6 +97,7 @@ Route::middleware(['auth:sanctum', 'account'])->group(function () {
     // Сынып жетекшісі (өз сыныбы) және завуч (кез келген сынып). Кімге не рұқсат екенін контроллер тексереді.
     Route::middleware('role:admin,teacher')->prefix('homeroom')->group(function () {
         Route::get('pending', [DayController::class, 'pending']);
+        Route::get('classes/{class}/month', [MonthController::class, 'show']);
         Route::get('classes/{class}/days/{date}', [DayController::class, 'show']);
         Route::patch('classes/{class}/days/{date}/students/{student}', [DayController::class, 'update']);
         Route::get('classes/{class}/days/{date}/students/{student}/history', [DayController::class, 'history']);

@@ -54,6 +54,12 @@ class User extends Authenticatable
         return array_map(static fn (SchoolClass $class): string => $class->name(), $this->homeroomClasses());
     }
 
+    /** Сыныптың қатысуын көре ала ма: завуч кез келген сыныпты, мұғалім тек өзі жетекші сыныпты. */
+    public function maySeeClass(SchoolClass $class): bool
+    {
+        return $this->role === Role::Admin || $class->homeroom_user_id === $this->id;
+    }
+
     /**
      * Осы адам жетекшісі болып тұрған, ағымдағы оқу жылындағы ашық сыныптар; нөмірі мен литера ретімен.
      *

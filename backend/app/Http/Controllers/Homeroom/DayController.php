@@ -39,7 +39,7 @@ class DayController extends Controller
     public function show(Request $request, SchoolClass $class, string $date): JsonResponse
     {
         $day = $this->day($date);
-        if ($day === null || ! $this->mayView($request->user(), $class)) {
+        if ($day === null || ! $request->user()->maySeeClass($class)) {
             return $this->error($day === null ? 'invalid_date' : 'forbidden', $day === null ? 422 : 403);
         }
 
@@ -97,7 +97,7 @@ class DayController extends Controller
     public function history(Request $request, SchoolClass $class, string $date, Student $student): JsonResponse
     {
         $day = $this->day($date);
-        if ($day === null || ! $this->mayView($request->user(), $class)) {
+        if ($day === null || ! $request->user()->maySeeClass($class)) {
             return $this->error($day === null ? 'invalid_date' : 'forbidden', $day === null ? 422 : 403);
         }
 
@@ -177,15 +177,10 @@ class DayController extends Controller
             : null;
     }
 
-    private function mayView(User $user, SchoolClass $class): bool
-    {
-        return $user->role === Role::Admin || $class->homeroom_user_id === $user->id;
-    }
-
     /** Өзгертуге болмайтын себеп (болса): forbidden | date_not_editable. */
     private function editError(User $user, SchoolClass $class, CarbonImmutable $day): ?string
     {
-        if (! $this->mayView($user, $class)) {
+        if (! $user->maySeeClass($class)) {
             return 'forbidden';
         }
         $today = CarbonImmutable::today();

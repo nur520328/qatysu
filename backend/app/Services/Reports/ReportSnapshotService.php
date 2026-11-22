@@ -14,41 +14,54 @@ use Illuminate\Database\UniqueConstraintViolationException;
  */
 class ReportSnapshotService
 {
-    public function __construct(private readonly WeeklyReportService $weekly) {}
+    public function __construct(
+        private readonly WeeklyReportService $weekly,
+        private readonly MonthlyReportService $monthly,
+    ) {}
 
-    public function weekly(CarbonImmutable $monday): ?Report
+    public function find(string $type, CarbonImmutable $start): ?Report
     {
-        return Report::query()->where('type', Report::WEEKLY)->whereDate('period_start', $monday->toDateString())->first();
+        return Report::query()->where('type', $type)->whereDate('period_start', $start->toDateString())->first();
     }
 
     /**
-     * Бекітілуі тиіс, бірақ әлі бекітілмеген апталық есептерді жасайды: ағымдағы апта аяқталса соны,
-     * өткен аптаның суреті жоқ болса оны да (жоспарлағыш бір күн істемей қалса да есеп жоғалмайды).
-     * Жазбасы мүлде жоқ апта бекітілмейді.
+     * Бекітілуі тиіс, бірақ әлі бекітілмеген есептерді жасайды: ағымдағы апта не ай аяқталса соны,
+     * өткен кезеңнің суреті жоқ болса оны да (жоспарлағыш бір күн істемей қалса да есеп жоғалмайды).
+     * Жазбасы мүлде жоқ кезең бекітілмейді.
      *
      * @return list<Report>
      */
-    public function freezeDueWeekly(): array
+    public function freezeDue(): array
     {
-        $current = WeeklyReportService::weekStart(CarbonImmutable::today());
+        $today = CarbonImmutable::today();
+        $week = WeeklyReportService::weekStart($today);
+        $month = MonthlyReportService::monthStart($today);
+        $candidates = [
+            [Report::WEEKLY, $week->subWeek(), $this->weekly],
+            [Report::WEEKLY, $week, $this->weekly],
+            [Report::MONTHLY, $month->subMonthNoOverflow(), $this->monthly],
+            [Report::MONTHLY, $month, $this->monthly],
+        ];
+
         $created = [];
-        foreach ([$current->subWeek(), $current] as $monday) {
-            if ($this->weekly($monday) !== null || ! $this->weekly->isComplete($monday) || $this->weekly->elapsedSchoolDays($monday) === []) {
+        foreach ($candidates as [$type, $start, $service]) {
+            $end = $type === Report::WEEKLY ? $start->addDays(6) : $start->endOfMonth()->startOfDay();
+            if ($this->find($type, $start) !== null || ! $service->isComplete($start) || $service->elapsedSchoolDays($start) === []) {
                 continue;
             }
-            // Бірде-бір жазбасы жоқ аптада сақтайтын сурет жоқ (платформа іске қосылғанға дейінгі апталар, каникул).
-            $hasRounds = AttendanceRound::query()->whereDate('date', '>=', $monday->toDateString())
-                ->whereDate('date', '<=', $monday->addDays(6)->toDateString())->exists();
+            // Бірде-бір жазбасы жоқ кезеңде сақтайтын сурет жоқ (платформа іске қосылғанға дейінгі кезең, каникул).
+            $hasRounds = AttendanceRound::query()->whereDate('date', '>=', $start->toDateString())
+                ->whereDate('date', '<=', $end->toDateString())->exists();
             if (! $hasRounds) {
                 continue;
             }
             try {
                 $created[] = Report::query()->create([
-                    'type' => Report::WEEKLY,
-                    'period_start' => $monday->toDateString(),
-                    'period_end' => $monday->addDays(6)->toDateString(),
+                    'type' => $type,
+                    'period_start' => $start->toDateString(),
+                    'period_end' => $end->toDateString(),
                     'generated_at' => now(),
-                    'data' => $this->weekly->compute($monday),
+                    'data' => $service->compute($start),
                 ]);
             } catch (UniqueConstraintViolationException) {
                 // Қатар іске қосылған екінші тексеріс: есеп бекітіліп қойған.

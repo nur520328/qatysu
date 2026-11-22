@@ -84,7 +84,7 @@ class WeeklyReportTest extends DutyTestCase
     public function test_week_totals_use_only_surveyed_class_days_for_the_percentage(): void
     {
         $json = $this->getJson('/api/admin/reports/weekly')->assertOk()->assertHeader('Cache-Control', 'no-store, private')
-            ->assertJsonPath('week', ['from' => '2026-11-16', 'to' => '2026-11-22', 'previous' => '2026-11-09', 'next' => null, 'is_current' => true])
+            ->assertJsonPath('period', ['from' => '2026-11-16', 'to' => '2026-11-22', 'previous' => '2026-11-09', 'next' => null, 'is_current' => true])
             ->assertJsonPath('version', 'live')->assertJsonPath('snapshot', null)->json('report');
 
         $this->assertSame(['2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19', '2026-11-20'], $json['school_days']);
@@ -184,7 +184,7 @@ class WeeklyReportTest extends DutyTestCase
         Artisan::call('qatysu:freeze-reports');
         Artisan::call('qatysu:freeze-reports');
         $this->assertSame(['2026-11-09', '2026-11-16'], Report::query()->orderBy('period_start')->pluck('period_start')->map->toDateString()->all());
-        $snapshot = app(ReportSnapshotService::class)->weekly(CarbonImmutable::parse('2026-11-16'));
+        $snapshot = app(ReportSnapshotService::class)->find('weekly', CarbonImmutable::parse('2026-11-16'));
         $this->assertTrue($snapshot->data['complete']);
         $this->assertSame(2, $snapshot->data['totals']['unexcused']);
 
@@ -195,11 +195,11 @@ class WeeklyReportTest extends DutyTestCase
         $this->travelTo(CarbonImmutable::create(2026, 11, 23, 9, 0));
         $this->patchJson("/api/homeroom/classes/{$this->b->id}/days/2026-11-18/students/{$this->ids['Тексеров']}", ['absence_reason' => 'excused'])->assertOk();
 
-        $this->getJson('/api/admin/reports/weekly?week=2026-11-18')->assertOk()
-            ->assertJsonPath('week.next', '2026-11-23')->assertJsonPath('week.is_current', false)
+        $this->getJson('/api/admin/reports/weekly?date=2026-11-18')->assertOk()
+            ->assertJsonPath('period.next', '2026-11-23')->assertJsonPath('period.is_current', false)
             ->assertJsonPath('version', 'live')->assertJsonPath('snapshot.changed_since', 1)
             ->assertJsonPath('report.totals.unexcused', 1)->assertJsonPath('report.totals.excused', 1);
-        $this->getJson('/api/admin/reports/weekly?week=2026-11-16&version=snapshot')->assertOk()
+        $this->getJson('/api/admin/reports/weekly?date=2026-11-16&version=snapshot')->assertOk()
             ->assertJsonPath('version', 'snapshot')->assertJsonPath('report.totals.unexcused', 2)->assertJsonPath('report.totals.excused', 0);
     }
 
@@ -213,7 +213,7 @@ class WeeklyReportTest extends DutyTestCase
 
     public function test_excel_export_has_all_sheets_and_matches_the_report(): void
     {
-        $response = $this->get('/api/admin/reports/weekly/export?week=2026-11-16')->assertOk()
+        $response = $this->get('/api/admin/reports/weekly/export?date=2026-11-16')->assertOk()
             ->assertHeader('Content-Disposition', 'attachment; filename="qatysu-apta-2026-11-16.xlsx"');
         $book = $this->open($response->getContent());
 
@@ -239,7 +239,7 @@ class WeeklyReportTest extends DutyTestCase
     {
         foreach (['kk' => 'Сыныптар', 'ru' => 'Классы', 'zh' => '班级'] as $locale => $classesSheet) {
             $this->admin->update(['locale' => $locale]);
-            $response = $this->get('/api/admin/reports/weekly/export?week=2026-11-16&names=0')->assertOk()
+            $response = $this->get('/api/admin/reports/weekly/export?date=2026-11-16&names=0')->assertOk()
                 ->assertHeader('Content-Disposition', 'attachment; filename="qatysu-apta-2026-11-16-jiyntyq.xlsx"');
             $book = $this->open($response->getContent());
 
@@ -268,7 +268,7 @@ class WeeklyReportTest extends DutyTestCase
     {
         Student::query()->whereKey($this->ids['Сынақов'])->update(['last_name' => '=1+1']);
 
-        $book = $this->open($this->get('/api/admin/reports/weekly/export?week=2026-11-16')->assertOk()->getContent());
+        $book = $this->open($this->get('/api/admin/reports/weekly/export?date=2026-11-16')->assertOk()->getContent());
         $cell = $book->getSheetByName('Оқушылар')->getCell('A2');
         $this->assertSame('s', $cell->getDataType());
         $this->assertSame('=1+1 Екінші', $cell->getValue());
@@ -276,11 +276,11 @@ class WeeklyReportTest extends DutyTestCase
 
     public function test_requests_are_validated_and_limited_to_admin(): void
     {
-        $this->getJson('/api/admin/reports/weekly?week=2026-11-23')->assertStatus(422)->assertJsonPath('code', 'date_in_future');
-        $this->getJson('/api/admin/reports/weekly?week=2026-02-30')->assertStatus(422)->assertJsonPath('code', 'invalid_date');
+        $this->getJson('/api/admin/reports/weekly?date=2026-11-23')->assertStatus(422)->assertJsonPath('code', 'date_in_future');
+        $this->getJson('/api/admin/reports/weekly?date=2026-02-30')->assertStatus(422)->assertJsonPath('code', 'invalid_date');
         $this->getJson('/api/admin/reports/weekly?version=draft')->assertStatus(422)->assertJsonPath('code', 'validation_failed');
         $this->getJson('/api/admin/reports/weekly?version=snapshot')->assertStatus(404)->assertJsonPath('code', 'not_found');
-        $this->getJson('/api/admin/reports/weekly/export?week=2026-11-23')->assertStatus(422);
+        $this->getJson('/api/admin/reports/weekly/export?date=2026-11-23')->assertStatus(422);
 
         $this->actingAs(User::factory()->create());
         $this->getJson('/api/admin/reports/weekly')->assertStatus(403);

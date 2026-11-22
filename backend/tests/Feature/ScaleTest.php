@@ -173,6 +173,65 @@ class ScaleTest extends TestCase
         $this->assertLessThan(200_000, strlen($export['response']->getContent()));
     }
 
+    public function test_monthly_report_stays_cheap_for_a_full_school_month(): void
+    {
+        $this->travelTo(CarbonImmutable::create(2026, 11, 30, 19, 0));
+        $this->seed(DemoSeeder::class);
+        $admin = User::factory()->admin()->create();
+        $dates = DB::table('calendar_days')->where('is_school_day', true)->whereBetween('date', ['2026-11-01', '2026-11-30'])->orderBy('date')->pluck('date')
+            ->map(static fn ($d): string => CarbonImmutable::parse($d)->toDateString())->all();
+        $this->assertCount(21, $dates);
+
+        // Толық ай: 44 сынып × 21 күн × 25 оқушы = 23 100 жазба; әр сынып-күнде 1 оқушы себепсіз жоқ.
+        $rounds = [];
+        $classes = SchoolClass::query()->get();
+        foreach ($classes as $class) {
+            foreach ($dates as $date) {
+                $rounds[] = [
+                    'class_id' => $class->id, 'date' => $date, 'shift' => $class->shift->value, 'client_uuid' => (string) Str::uuid(),
+                    'revision' => 1, 'received_late' => false, 'duty_done' => true, 'created_at' => now(), 'updated_at' => now(),
+                ];
+            }
+        }
+        foreach (array_chunk($rounds, 500) as $chunk) {
+            DB::table('attendance_rounds')->insert($chunk);
+        }
+        $students = DB::table('student_enrollments')->orderBy('student_id')->get(['class_id', 'student_id'])->groupBy('class_id');
+        $records = [];
+        foreach (DB::table('attendance_rounds')->get(['id', 'class_id']) as $round) {
+            foreach ($students[$round->class_id] as $i => $enrollment) {
+                $records[] = [
+                    'round_id' => $round->id, 'student_id' => $enrollment->student_id, 'round_status' => $i === 0 ? 'absent' : 'present',
+                    'round_status_source' => 'duty', 'absence_reason' => $i === 0 ? 'unexcused' : null, 'created_at' => now(), 'updated_at' => now(),
+                ];
+            }
+            if (count($records) >= 2000) {
+                DB::table('attendance_records')->insert($records);
+                $records = [];
+            }
+        }
+        DB::table('attendance_records')->insert($records);
+        $this->assertSame(23_100, DB::table('attendance_records')->count());
+
+        $before = memory_get_peak_usage(true);
+        $monthly = $this->measure(fn () => $this->actingAs($admin)->getJson('/api/admin/reports/monthly')->assertOk());
+        $report = $monthly['response']->json('report');
+        $this->assertEquals([924, 924, 23_100, 924, 96.0], [
+            $report['totals']['class_days_expected'], $report['totals']['class_days_surveyed'], $report['totals']['marked'], $report['totals']['unexcused'], $report['totals']['attendance_pct'],
+        ]);
+        $this->assertSame([5, 7], [count($report['weeks']), count($report['grades'])]);
+
+        $this->assertLessThanOrEqual(20, $monthly['queries'], "айлық есеп: сұраныс тым көп ({$monthly['queries']})");
+        $this->assertLessThan(3000, $monthly['ms'], "айлық есеп: тым баяу ({$monthly['ms']} мс)");
+        // Виртуалды хостингте PHP-ге берілетін жад шектеулі: есеп ондаған МБ-тан аспауы тиіс.
+        $this->assertLessThan(64 * 1024 * 1024, memory_get_peak_usage(true) - $before, 'айлық есеп тым көп жад алды');
+
+        $class = $this->measure(fn () => $this->actingAs($admin)->getJson("/api/homeroom/classes/{$classes[0]->id}/month")->assertOk());
+        $this->assertSame([25, 525], [count($class['response']->json('students')), $class['response']->json('totals.marked')]);
+        $this->assertLessThanOrEqual(15, $class['queries'], "сыныптың айлық қорытындысы: сұраныс тым көп ({$class['queries']})");
+        $this->assertLessThan(500, $class['ms']);
+    }
+
     public function test_full_school_student_file_imports_without_per_row_queries(): void
     {
         $this->travelTo(CarbonImmutable::create(2026, 11, 20, 10));
